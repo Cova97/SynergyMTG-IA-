@@ -20,9 +20,8 @@ const openai = new OpenAI({
 });
 
 async function main() {
-  console.time('nvidia-request');
   const completion = await openai.chat.completions.create({
-    model: 'meta/llama-3.3-70b-instruct',
+    model: 'meta/llama-3.1-8b-instruct',
     messages: [
       {
         role: 'user',
@@ -34,7 +33,7 @@ async function main() {
     max_tokens: 20,
     stream: false,
   });
-  console.timeEnd('nvidia-request');
+
   console.log(completion.choices[0]?.message?.content);
 }
 

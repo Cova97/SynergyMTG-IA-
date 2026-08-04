@@ -123,6 +123,10 @@ function validate(result: any, inputCards: CardInput[]) {
 const apiKey = process.env.NVIDIA_API_KEY;
 if (!apiKey) throw new Error('Falta NVIDIA_API_KEY en tus variables de entorno');
 
+// Permite comparar modelos sin duplicar el script:
+// MODEL=meta/llama-3.3-70b-instruct npx ts-node src/test-combo-real-cards.ts ...
+const MODEL = process.env.MODEL ?? 'meta/llama-3.1-8b-instruct';
+
 const client = new OpenAI({
   apiKey,
   baseURL: 'https://integrate.api.nvidia.com/v1',
@@ -156,9 +160,10 @@ async function main() {
   console.log('\n--- Cartas resueltas ---');
   cards.forEach((c) => console.log(`- ${c.name} (${c.id})\n  ${c.oracle_text}\n`));
 
+  console.log('Modelo:', MODEL);
   console.time('analisis-combo');
   const completion = await client.chat.completions.create({
-    model: 'meta/llama-3.1-8b-instruct',
+    model: MODEL,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildUserMessage(cards) },
@@ -178,7 +183,11 @@ async function main() {
     return;
   }
 
-  const parsed = JSON.parse(raw);
+  // Defensivo: algunos modelos envuelven el JSON en fences de markdown
+  // (```json ... ```) pese a la instruccion explicita de no hacerlo.
+  const cleaned = raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+
+  const parsed = JSON.parse(cleaned);
   const validation = validate(parsed, cards);
 
   console.log('\n--- Validacion post-respuesta ---');

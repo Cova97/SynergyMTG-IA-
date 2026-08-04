@@ -110,7 +110,10 @@ export class ComboAnalysisAiService {
 
     let parsed: ComboAnalysisResult;
     try {
-      parsed = JSON.parse(raw);
+      // Defensivo: algunos modelos envuelven el JSON en fences de
+      // markdown pese a la instruccion explicita de no hacerlo.
+      const cleaned = raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+      parsed = JSON.parse(cleaned);
     } catch {
       // guided_json casi nunca falla aqui, pero nunca confies ciegamente
       this.logger.error('Respuesta no parseable como JSON pese a guided_json');

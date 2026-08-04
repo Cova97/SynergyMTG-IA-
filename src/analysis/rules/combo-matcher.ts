@@ -7,7 +7,7 @@
 //   - findChains: cadenas de cartas conectadas (candidatos a sinergia)
 //   - findLoops: ciclos en el grafo (candidatos a combo infinito/repetible)
 
-import { ResourceType, TaggedCard } from './pattern-dictionary';
+import { ResourceType, TaggedCard, expandWithImplications } from './pattern-dictionary';
 
 export interface CandidateGroup {
   cardIds: string[];
@@ -27,8 +27,8 @@ function buildResourceGraph(taggedCards: TaggedCard[]): Edge[] {
   const edges: Edge[] = [];
 
   for (const producer of taggedCards) {
-    const producedResources = new Set<ResourceType>(
-      producer.matchedPatterns.flatMap((p) => p.produces),
+    const producedResources = expandWithImplications(
+      new Set<ResourceType>(producer.matchedPatterns.flatMap((p) => p.produces)),
     );
     if (producedResources.size === 0) continue;
 

@@ -151,6 +151,26 @@ export interface TaggedCard {
   matchedPatterns: Pattern[];
 }
 
+// Algunos recursos son distintos conceptualmente pero uno implica al
+// otro en terminos de juego: si una tierra ACABA de entrar al campo,
+// tambien esta EN el campo de batalla (satisface ambos consumos).
+// Sin esto, cadenas como Zuran Orb <-> Ramunap Excavator no cierran
+// como loop porque los tags no coinciden exactamente.
+export const RESOURCE_IMPLICATIONS: Partial<Record<ResourceType, ResourceType[]>> = {
+  land_enters_battlefield: ['land_on_battlefield'],
+};
+
+/** Expande un set de recursos producidos con sus implicaciones. */
+export function expandWithImplications(resources: Set<ResourceType>): Set<ResourceType> {
+  const expanded = new Set(resources);
+  for (const resource of resources) {
+    for (const implied of RESOURCE_IMPLICATIONS[resource] ?? []) {
+      expanded.add(implied);
+    }
+  }
+  return expanded;
+}
+
 /** Analiza el oracle_text de una carta y regresa los patrones que matchea. */
 export function tagCard(cardId: string, oracleText: string): TaggedCard {
   const matchedPatterns = PATTERN_DICTIONARY.filter((p) => p.regex.test(oracleText));

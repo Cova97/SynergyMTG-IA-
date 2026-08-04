@@ -120,10 +120,16 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     // Wizards actualizo el wording de Oracle: cartas nuevas/reimpresas
     // dicen "When this creature enters," (sin "the battlefield"), las
     // viejas siguen diciendo "enters the battlefield". Se aceptan ambas.
-    regex: /when(ever)? [\w\s,'".-]{0,60} enters\b/is,
+    // Se EXCLUYE explicitamente "a land" y "(a|another) creature" justo
+    // despues de when(ever) — esos casos ya los cubren landfall_trigger
+    // y creature_enters_trigger; sin la exclusion, self_etb_trigger
+    // matcheaba tambien texto de landfall y generaba conexiones falsas
+    // entre cartas que no interactuan de verdad (ej. Scute Swarm y
+    // Lotus Cobra aparecian conectadas sin razon real).
+    regex: /when(ever)? (?!a land|(a |another )?creature)[\w\s,'".-]{0,60} enters\b/is,
     produces: [],
     consumes: ['creature_enters_battlefield'],
-    description: 'Trigger de "cuando ESTA carta entra al campo de batalla" (auto-ETB) — distinto del generico que reacciona a cualquier criatura',
+    description: 'Trigger de "cuando ESTA carta entra al campo de batalla" (auto-ETB) — distinto del generico que reacciona a cualquier criatura o tierra',
   },
   {
     id: 'create_token_effect',

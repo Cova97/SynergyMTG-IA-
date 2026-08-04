@@ -232,9 +232,12 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   {
     id: 'life_gain_trigger',
     regex: /whenever you gain life/is,
-    produces: ['life_lost'],
+    // Ampliado: "whenever you gain life" no siempre produce perdida de
+    // vida (Sanguine Bond) — tambien puede producir contadores +1/+1
+    // (Heliod, Sun-Crowned; Ajani's Pridemate; Archangel of Thune).
+    produces: ['life_lost', 'counter_plus1plus1'],
     consumes: ['life_gained'],
-    description: 'Reacciona cuando TU ganas vida (ej. Sanguine Bond)',
+    description: 'Reacciona cuando TU ganas vida (ej. Sanguine Bond, Heliod, Ajani\'s Pridemate)',
   },
   {
     id: 'life_loss_trigger',
@@ -242,6 +245,30 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     produces: ['life_gained'],
     consumes: ['life_lost'],
     description: 'Reacciona cuando un oponente pierde vida (ej. Exquisite Blood)',
+  },
+  {
+    id: 'grant_lifelink_effect',
+    // Aproximacion: otorgar lifelink solo produce vida si la criatura
+    // tambien inflige dano — se modela como que CONSUME dano infligido
+    // y PRODUCE vida ganada (ej. la habilidad activada de Heliod).
+    regex: /gains? lifelink( until end of turn)?/is,
+    produces: ['life_gained'],
+    consumes: ['damage_dealt'],
+    description: 'Otorga lifelink a una criatura (convierte dano infligido en vida ganada)',
+  },
+  {
+    id: 'remove_counter_for_damage',
+    regex: /remove a \+1\/\+1 counter from[\s\S]{0,60}deals? \d+ damage/is,
+    produces: ['damage_dealt'],
+    consumes: ['counter_plus1plus1'],
+    description: 'Quita un contador +1/+1 para infligir dano (ej. Walking Ballista)',
+  },
+  {
+    id: 'remove_counter_for_life',
+    regex: /remove a \+1\/\+1 counter from[\s\S]{0,60}gain \d+ life/is,
+    produces: ['life_gained'],
+    consumes: ['counter_plus1plus1'],
+    description: 'Quita un contador +1/+1 para ganar vida (ej. Spike Feeder)',
   },
   {
     id: 'damage_dealt_effect',
@@ -284,10 +311,10 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   // ---- Hechizos ----
   {
     id: 'spell_cast_trigger',
-    regex: /whenever you cast (an? )?(instant|sorcery|noncreature) spell/is,
-    produces: ['life_lost', 'card_drawn', 'token_created', 'damage_dealt'],
+    regex: /whenever you cast (an? )?(instant|sorcery|noncreature )?spell/is,
+    produces: ['life_lost', 'card_drawn', 'token_created', 'damage_dealt', 'life_gained'],
     consumes: ['spell_cast'],
-    description: 'Reacciona cuando lanzas un hechizo de instantaneo/conjuro',
+    description: 'Reacciona cuando lanzas un hechizo (instantaneo/conjuro, o cualquier hechizo)',
   },
 
   // ---- Casteo desde el cementerio (flashback, escape, aftermath, jump-start) ----

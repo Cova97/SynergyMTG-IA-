@@ -50,9 +50,24 @@ async function main() {
   }
 
   const cards: CardInput[] = [];
+  const notFound: string[] = [];
   for (const name of cardNames) {
-    cards.push(await fetchCardFromScryfall(name));
+    try {
+      cards.push(await fetchCardFromScryfall(name));
+    } catch (err) {
+      notFound.push(name);
+      console.warn(`Advertencia: "${name}" no se pudo resolver — se omite de la prueba.`);
+    }
     await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  if (notFound.length > 0) {
+    console.log(`\nCartas omitidas (no encontradas): ${notFound.join(', ')}`);
+  }
+  if (cards.length < 2) {
+    console.error('\nQuedaron menos de 2 cartas validas, no se puede analizar.');
+    process.exitCode = 1;
+    return;
   }
 
   console.log('Cartas cargadas:', cards.map((c) => c.name).join(', '));

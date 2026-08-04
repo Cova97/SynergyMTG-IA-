@@ -68,7 +68,7 @@ export class AnalysisService {
 
       let aiExplanation: EnrichedCandidate['aiExplanation'] = null;
       try {
-        aiExplanation = await this.aiService.analyzeCombo(candidateCards);
+        aiExplanation = await this.aiService.analyzeCombo(candidateCards, candidate.connections);
       } catch (err) {
         this.logger.error(
           `Fallo explicando candidato [${candidate.cardIds.join(', ')}]: ${(err as Error).message}`,

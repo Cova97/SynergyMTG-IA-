@@ -56,7 +56,7 @@ async function main() {
       cards.push(await fetchCardFromScryfall(name));
     } catch (err) {
       notFound.push(name);
-      console.warn(`Advertencia: "${name}" no se pudo resolver — se omite de la prueba.`);
+      console.warn(`Advertencia: "${name}" no se pudo resolver — ${(err as Error).message}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }

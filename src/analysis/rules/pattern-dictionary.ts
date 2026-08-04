@@ -29,6 +29,7 @@ export type ResourceType =
   | 'life_gained'
   | 'life_lost'
   | 'counter_plus1plus1'
+  | 'counter_minus1minus1'
   | 'mana_produced'
   | 'creature_attacks'
   | 'spell_cast'
@@ -144,6 +145,44 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     produces: ['counter_plus1plus1'],
     consumes: [],
     description: 'Coloca contadores +1/+1',
+  },
+
+  // ---- Persist / Undying (CR 702.79a y 702.93a) ----
+  {
+    id: 'persist_ability',
+    // CR 702.79a: "When this permanent is put into a graveyard from the
+    // battlefield, if it had no -1/-1 counters on it, return it to the
+    // battlefield under its owner's control with a -1/-1 counter on it."
+    regex: /\bpersist\b/is,
+    produces: ['creature_enters_battlefield', 'counter_minus1minus1'],
+    consumes: ['creature_dies'],
+    description: 'Persist: al morir (sin contador -1/-1), regresa al campo con un contador -1/-1',
+  },
+  {
+    id: 'undying_ability',
+    // CR 702.93a: "When this permanent is put into a graveyard from the
+    // battlefield, if it had no +1/+1 counters on it, return it to the
+    // battlefield under its owner's control with a +1/+1 counter on it."
+    regex: /\bundying\b/is,
+    produces: ['creature_enters_battlefield', 'counter_plus1plus1'],
+    consumes: ['creature_dies'],
+    description: 'Undying: al morir (sin contador +1/+1), regresa al campo con un contador +1/+1',
+  },
+
+  // ---- Prevencion de contadores (Melira, Sylvok Outcast / Solemnity) ----
+  // LIMITACION CONOCIDA Y DOCUMENTADA: este patron solo ETIQUETA la
+  // carta para que no aparezca como "(ninguno)" — nuestro modelo de
+  // grafo produce/consume no soporta logica condicional/negacion, asi
+  // que NO simula automaticamente que estas cartas "cancelan" el
+  // contador -1/-1 de Persist y habilitan el loop infinito real. Esa
+  // interpretacion la debe hacer la capa de IA o un humano al ver que
+  // esta carta aparece junto a una con persist_ability.
+  {
+    id: 'counter_prevention_effect',
+    regex: /counters? can.?t be put on|can.?t have (-1\/-1 )?counters? put on/is,
+    produces: [],
+    consumes: [],
+    description: 'Previene que se coloquen contadores (ej. Melira, Sylvok Outcast; Solemnity) — no simulado en el grafo, solo etiquetado',
   },
 
   // ---- Copiar / desenderezar (loops tipo Kiki-Jiki) ----

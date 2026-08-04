@@ -153,6 +153,16 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     // CR 702.79a: "When this permanent is put into a graveyard from the
     // battlefield, if it had no -1/-1 counters on it, return it to the
     // battlefield under its owner's control with a -1/-1 counter on it."
+    // Si produce creature_enters_battlefield: es necesario para conectar
+    // con triggers GENERICOS reales como Soul Warden ("cuando entra
+    // OTRA criatura, ganas vida") — ese caso es real y hay que
+    // conservarlo. El costo conocido: como self_etb_trigger consume
+    // ese MISMO recurso generico (no distingue "entro YO" de "entro
+    // cualquier criatura"), puede generar conexiones falsas entre dos
+    // cartas de auto-ETB sin relacion real (visto con Kitchen Finks +
+    // Murderous Redcap). Es un limite real del modelo por tipo de
+    // recurso (no rastrea identidad de carta) — sin solucion limpia
+    // sin romper alguno de los dos casos reales.
     regex: /\bpersist\b/is,
     produces: ['creature_enters_battlefield', 'counter_minus1minus1'],
     consumes: ['creature_dies'],
@@ -163,6 +173,7 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     // CR 702.93a: "When this permanent is put into a graveyard from the
     // battlefield, if it had no +1/+1 counters on it, return it to the
     // battlefield under its owner's control with a +1/+1 counter on it."
+    // Mismo trade-off documentado en persist_ability.
     regex: /\bundying\b/is,
     produces: ['creature_enters_battlefield', 'counter_plus1plus1'],
     consumes: ['creature_dies'],

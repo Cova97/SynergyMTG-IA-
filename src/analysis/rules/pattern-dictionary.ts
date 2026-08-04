@@ -85,6 +85,13 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     consumes: [],
     description: 'Genera mana',
   },
+  {
+    id: 'ramp_land_to_battlefield',
+    regex: /search (your|their) library for (up to \w+ )?(a |two |\d+ )?(basic )?land[\s\S]{0,100}put (it|one|them|that card) onto the battlefield/is,
+    produces: ['land_enters_battlefield'],
+    consumes: [],
+    description: 'Rampa: busca una tierra en la biblioteca y la pone directo al campo de batalla (ej. Cultivate)',
+  },
 
   // ---- Criaturas: muerte, entrada, sacrificio ----
   {
@@ -223,6 +230,20 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     description: 'Gana vida',
   },
   {
+    id: 'life_gain_trigger',
+    regex: /whenever you gain life/is,
+    produces: ['life_lost'],
+    consumes: ['life_gained'],
+    description: 'Reacciona cuando TU ganas vida (ej. Sanguine Bond)',
+  },
+  {
+    id: 'life_loss_trigger',
+    regex: /whenever (an? )?opponent[s]? loses? life/is,
+    produces: ['life_gained'],
+    consumes: ['life_lost'],
+    description: 'Reacciona cuando un oponente pierde vida (ej. Exquisite Blood)',
+  },
+  {
     id: 'damage_dealt_effect',
     regex: /deals? (\d+|X) damage/is,
     produces: ['damage_dealt'],
@@ -267,6 +288,69 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     produces: ['life_lost', 'card_drawn', 'token_created', 'damage_dealt'],
     consumes: ['spell_cast'],
     description: 'Reacciona cuando lanzas un hechizo de instantaneo/conjuro',
+  },
+
+  // ---- Casteo desde el cementerio (flashback, escape, aftermath, jump-start) ----
+  {
+    id: 'cast_from_graveyard',
+    regex: /(flashback|escape|aftermath|jump-start)[\s\S]{0,30}(you may cast|from your graveyard)|you may cast this card from your graveyard/is,
+    produces: ['creature_enters_battlefield', 'spell_cast'],
+    consumes: ['creature_in_graveyard'],
+    description: 'Permite lanzar esta carta directamente desde el cementerio (flashback/escape/aftermath/jump-start)',
+  },
+
+  // ---- Ciclismo: descarta esta carta para robar otra ----
+  {
+    id: 'cycling_effect',
+    regex: /cycling [\{\}\dwubrgcx/]+/is,
+    produces: ['card_drawn', 'card_discarded'],
+    consumes: [],
+    description: 'Cycling: descarta esta carta pagando un costo para robar una nueva',
+  },
+
+  // ---- Proliferar: suma otro contador a cada permanente/jugador que ya tenga uno ----
+  {
+    id: 'proliferate_effect',
+    regex: /proliferate/is,
+    produces: ['counter_plus1plus1'],
+    consumes: ['counter_plus1plus1'],
+    description: 'Proliferar: agrega otro contador de cada tipo que ya este presente',
+  },
+
+  // ---- Delve: exilia cartas del cementerio para pagar el costo ----
+  {
+    id: 'delve_effect',
+    regex: /delve \(/is,
+    produces: ['permanent_exiled'],
+    consumes: ['creature_in_graveyard'],
+    description: 'Delve: exilia cartas del cementerio para reducir el costo de este hechizo',
+  },
+
+  // ---- Populate: copia un token de criatura que ya controles ----
+  {
+    id: 'populate_effect',
+    regex: /populate/is,
+    produces: ['creature_copied', 'creature_enters_battlefield'],
+    consumes: ['token_created'],
+    description: 'Populate: crea una copia de un token de criatura que ya controlas',
+  },
+
+  // ---- Explorar: revela la carta de arriba, tierra a mano o +1/+1 y opcion de mill ----
+  {
+    id: 'explore_effect',
+    regex: /explores?\b/is,
+    produces: ['counter_plus1plus1', 'card_milled', 'card_drawn'],
+    consumes: [],
+    description: 'Explorar: revela la carta de arriba de la biblioteca (tierra a mano, o +1/+1 y cementerio opcional)',
+  },
+
+  // ---- Artefactos desechables (Treasure, Clue, Food): sacrificar por valor ----
+  {
+    id: 'sacrifice_artifact_for_value',
+    regex: /sacrifice (this artifact|a|an|target) (artifact|treasure|clue|food)[:,].*(add|draw|gain \d+ life)/is,
+    produces: ['mana_produced', 'card_drawn', 'life_gained'],
+    consumes: [],
+    description: 'Sacrifica un artefacto desechable (Treasure/Clue/Food) por maná, robo o vida',
   },
 ];
 

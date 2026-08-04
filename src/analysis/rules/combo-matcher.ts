@@ -51,6 +51,27 @@ function buildResourceGraph(taggedCards: TaggedCard[]): Edge[] {
 }
 
 /**
+ * Descarta loops que son "superconjunto" de un loop mas chico ya
+ * encontrado — es decir, contienen TODAS las cartas de un combo mas
+ * simple mas una pieza extra colgada que no aporta un mecanismo
+ * nuevo. Sin esto, un set de cartas con varios patrones compartidos
+ * (ej. contador <-> vida) genera decenas de variantes redundantes del
+ * mismo combo base en vez de mostrar los combos minimos reales.
+ */
+function dedupeLoops(loops: CandidateGroup[]): CandidateGroup[] {
+  return loops.filter((loop) => {
+    const cardSet = new Set(loop.cardIds);
+    const isSupersetOfSmaller = loops.some((other) => {
+      if (other === loop) return false;
+      const otherSet = new Set(other.cardIds);
+      if (otherSet.size >= cardSet.size) return false; // solo comparar contra loops MAS chicos
+      return [...otherSet].every((id) => cardSet.has(id));
+    });
+    return !isSupersetOfSmaller;
+  });
+}
+
+/**
  * Busca ciclos en el grafo (A -> B -> C -> A) usando DFS.
  * Un ciclo es un candidato fuerte a "combo infinito o muy repetible" —
  * exactamente el patron del combo de Zuran Orb + Ramunap Excavator +
@@ -133,7 +154,8 @@ function findChains(edges: Edge[], loopCardIds: Set<string>): CandidateGroup[] {
  */
 export function findComboCandidates(taggedCards: TaggedCard[]): CandidateGroup[] {
   const edges = buildResourceGraph(taggedCards);
-  const loops = findLoops(edges);
+  const rawLoops = findLoops(edges);
+  const loops = dedupeLoops(rawLoops);
   const loopCardIds = new Set(loops.flatMap((l) => l.cardIds));
   const chains = findChains(edges, loopCardIds);
 

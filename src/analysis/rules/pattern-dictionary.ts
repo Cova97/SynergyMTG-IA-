@@ -17,6 +17,7 @@ export type ResourceType =
   | 'creature_dies'
   | 'creature_in_graveyard'
   | 'creature_enters_battlefield'
+  | 'flexible_creature_target_enters'
   | 'creature_copied'
   | 'permanent_untapped'
   | 'permanent_exiled'
@@ -129,8 +130,14 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     // Lotus Cobra aparecian conectadas sin razon real).
     regex: /when(ever)? (?!a land|(a |another )?creature)[\w\s,'".-]{0,60} enters\b/is,
     produces: [],
-    consumes: ['creature_enters_battlefield'],
-    description: 'Trigger de "cuando ESTA carta entra al campo de batalla" (auto-ETB) — distinto del generico que reacciona a cualquier criatura o tierra',
+    // Ahora consume 'flexible_creature_target_enters' en vez del
+    // recurso generico — solo se activa por efectos donde el jugador
+    // ELIGE que sea esta carta la que entra/regresa (copiar, reanimar,
+    // parpadear). Persist/Undying/Ninjutsu NO producen este recurso
+    // porque son fijos (siempre la misma carta, sin eleccion) y no
+    // deberian disparar el auto-ETB de OTRA carta sin relacion real.
+    consumes: ['flexible_creature_target_enters'],
+    description: 'Trigger de "cuando ESTA carta entra al campo de batalla" (auto-ETB) — solo se conecta con efectos flexibles (copiar/reanimar/parpadear), no con Persist/Undying/Ninjutsu',
   },
   {
     id: 'create_token_effect',
@@ -207,7 +214,7 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   {
     id: 'copy_creature_haste_tap_ability',
     regex: /\{T\}[:,].*create[s]?.*token.*copy.*(nonlegendary )?creature.*haste/is,
-    produces: ['creature_copied', 'creature_enters_battlefield'],
+    produces: ['creature_copied', 'creature_enters_battlefield', 'flexible_creature_target_enters'],
     consumes: ['permanent_untapped'],
     description: 'Habilidad de enderezar que copia una criatura con prisa (tipo Kiki-Jiki)',
   },
@@ -244,7 +251,7 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   {
     id: 'reanimation_effect',
     regex: /return target creature card from (a|your|any) graveyard to the battlefield/is,
-    produces: ['creature_enters_battlefield'],
+    produces: ['creature_enters_battlefield', 'flexible_creature_target_enters'],
     consumes: ['creature_in_graveyard'],
     description: 'Reanima: pone una criatura del cementerio directo al campo de batalla',
   },
@@ -258,7 +265,7 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   {
     id: 'flicker_effect',
     regex: /exile target creature.*return (it|that card) to the battlefield/is,
-    produces: ['creature_enters_battlefield', 'permanent_returned_from_exile'],
+    produces: ['creature_enters_battlefield', 'permanent_returned_from_exile', 'flexible_creature_target_enters'],
     consumes: ['permanent_exiled'],
     description: 'Exilia una criatura y la regresa al campo de batalla (flicker/parpadeo)',
   },
@@ -335,10 +342,15 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   },
   {
     id: 'damage_trigger',
-    regex: /whenever [\w\s,]* deals? (combat )?damage/is,
+    // Excluye "deals damage to you" (habilidades defensivas/castigo,
+    // ej. Mikaeus, the Unhallowed: "Whenever a Human deals damage to
+    // you, destroy it" — no genera valor combeable). Solo matchea
+    // dano OFENSIVO que beneficia a quien lo inflige (ej. Covert
+    // Technician: "deals combat damage to a player, you may...").
+    regex: /whenever [\w\s,]* deals? (combat )?damage(?! to you\b)/is,
     produces: ['card_drawn', 'life_gained', 'token_created', 'counter_plus1plus1'],
     consumes: ['damage_dealt'],
-    description: 'Reacciona cuando una criatura inflige dano',
+    description: 'Reacciona cuando una criatura inflige dano (ofensivo, no defensivo)',
   },
 
   // ---- Ataques, turnos y combates extra ----
@@ -462,7 +474,7 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   {
     id: 'populate_effect',
     regex: /populate/is,
-    produces: ['creature_copied', 'creature_enters_battlefield'],
+    produces: ['creature_copied', 'creature_enters_battlefield', 'flexible_creature_target_enters'],
     consumes: ['token_created'],
     description: 'Populate: crea una copia de un token de criatura que ya controlas',
   },

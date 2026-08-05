@@ -381,6 +381,34 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     consumes: ['creature_in_graveyard'],
     description: 'Permite lanzar esta carta directamente desde el cementerio (flashback/escape/aftermath/jump-start)',
   },
+  {
+    id: 'unearth_ability',
+    // Unearth: devuelve un permanente del cementerio al campo de
+    // batalla con prisa, se exilia al siguiente final de turno.
+    regex: /unearth [\{\}\dwubrgcx]+/is,
+    produces: ['creature_enters_battlefield'],
+    consumes: ['creature_in_graveyard'],
+    description: 'Unearth: regresa esta criatura del cementerio al campo con prisa (temporal)',
+  },
+  {
+    id: 'embalm_eternalize_ability',
+    // Embalm/Eternalize: exilia esta carta del cementerio para crear
+    // un token que es una copia de ella.
+    regex: /\b(embalm|eternalize)\b\s*[\{\}\dwubrgcx]+/is,
+    produces: ['creature_enters_battlefield', 'creature_copied', 'token_created'],
+    consumes: ['creature_in_graveyard'],
+    description: 'Embalm/Eternalize: exilia esta carta del cementerio para crear un token copia',
+  },
+  {
+    id: 'extort_ability',
+    // CR 702.101a: "Whenever you cast a spell, you may pay {W/B}. If
+    // you do, each opponent loses 1 life and you gain life equal to
+    // the total life lost this way."
+    regex: /\bextort\b/is,
+    produces: ['life_lost', 'life_gained'],
+    consumes: ['spell_cast'],
+    description: 'Extort: al lanzar un hechizo, puedes pagar para drenar 1 vida de cada oponente',
+  },
 
   // ---- Ciclismo: descarta esta carta para robar otra ----
   {
@@ -389,6 +417,27 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     produces: ['card_drawn', 'card_discarded'],
     consumes: [],
     description: 'Cycling: descarta esta carta pagando un costo para robar una nueva',
+  },
+
+  // ---- Ninjutsu / Channel (Kamigawa) ----
+  {
+    id: 'ninjutsu_ability',
+    // Wording oficial: "Ninjutsu {cost} ({cost}, Return an unblocked
+    // attacker you control to hand: Put this card onto the battlefield
+    // from your hand tapped and attacking.)" — tambien existe la
+    // variante "Commander ninjutsu".
+    regex: /(commander )?ninjutsu [\{\}\dwubrgcx]+/is,
+    produces: ['creature_enters_battlefield'],
+    consumes: ['creature_attacks'],
+    description: 'Ninjutsu: regresa un atacante sin bloquear a la mano para poner esta carta en juego atacando',
+  },
+  {
+    id: 'channel_ability',
+    // "Channel — {cost}, Discard this card: [efecto]"
+    regex: /channel[\s—-]*[\{\}\dwubrgcx]*[,—-]?\s*discard this card/is,
+    produces: ['card_discarded'],
+    consumes: [],
+    description: 'Channel: descarta esta carta de la mano pagando un costo por un efecto',
   },
 
   // ---- Proliferar: suma otro contador a cada permanente/jugador que ya tenga uno ----

@@ -6,8 +6,8 @@ export type DeckFormat = (typeof DECK_FORMATS)[number];
 export class CreateDeckDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsIn(DECK_FORMATS)
-  format: DeckFormat;
+  format!: DeckFormat;
 }

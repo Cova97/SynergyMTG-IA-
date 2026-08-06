@@ -75,9 +75,21 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   },
   {
     id: 'fetch_land',
-    regex: /sacrifice (this land|~)[:,].*search your library for a( basic)? land/is,
+    // Scryfall NUNCA usa el simbolo "~" en oracle_text, siempre
+    // sustituye el nombre real de la carta (ej. "Sacrifice Arid Mesa:"
+    // en vez de "Sacrifice this land:"). El patron anterior solo
+    // aceptaba "this land" o "~" literal, por lo que fetch lands reales
+    // como Arid Mesa y Bloodstained Mire no se detectaban en absoluto.
+    regex: /sacrifice [\w\s,'".-]{0,40}[:,][\s\S]{0,80}search your library for [\s\S]{0,80}put it onto the battlefield/is,
     produces: ['land_enters_battlefield', 'land_in_graveyard'],
-    consumes: ['land_on_battlefield'],
+    // NO consume 'land_on_battlefield' a proposito: a diferencia de
+    // Zuran Orb (motor REPETIBLE que si necesita que le "rellenen"
+    // tierras), una fetch land se sacrifica a SI MISMA una sola vez —
+    // no necesita ayuda de otra carta para activarse. Sin este ajuste,
+    // cualquier par de fetch lands se conectaba como [LOOP] falso
+    // entre si, sin ninguna interaccion real (encontrado probando
+    // Evolving Wilds + Terramorphic Expanse + Prismatic Vista juntas).
+    consumes: [],
     description: 'Sacrifica esta tierra para buscar y poner otra en juego (fetch land)',
   },
   {

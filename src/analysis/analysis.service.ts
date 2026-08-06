@@ -8,7 +8,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { tagCard } from './rules/pattern-dictionary';
 import { findComboCandidates, CandidateGroup } from './rules/combo-matcher';
-import { ComboAnalysisAiService } from '../combo-analysis-ai.service';
+import { ComboAnalysisAiService } from './ai/combo-analysis-ai.service';
 
 export interface CardInput {
   id: string;

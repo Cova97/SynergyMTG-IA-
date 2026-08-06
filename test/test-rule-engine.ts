@@ -6,8 +6,8 @@
 // Uso: npx ts-node src/test-rule-engine.ts "Carta 1" "Carta 2" ...
 
 import 'dotenv/config';
-import { tagCard } from './analysis/rules/pattern-dictionary';
-import { findComboCandidates } from './analysis/rules/combo-matcher';
+import { tagCard } from '../src/analysis/rules/pattern-dictionary';
+import { findComboCandidates } from '../src/analysis/rules/combo-matcher';
 
 const SCRYFALL_HEADERS = {
   'User-Agent': 'MTGComboApp/0.1 (proyecto personal de coleccion MTG)',

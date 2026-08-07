@@ -19,19 +19,21 @@ datasource db {
 // adelante se lee de aqui, no se vuelve a golpear la API por la
 // misma carta.
 model Card {
-  id         String   @id // UUID real de Scryfall, no autogenerado
-  name       String
-  oracleText String   @db.Text @map("oracle_text")
-  manaCost   String?  @map("mana_cost")
-  typeLine   String   @map("type_line")
-  colors     String[] // ej. ["W", "U"] — vacio para cartas incoloras
-  rarity     String
-  set        String
-  imageUri   String?  @map("image_uri")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id            String   @id // UUID real de Scryfall, no autogenerado
+  name          String
+  oracleText    String   @db.Text @map("oracle_text")
+  manaCost      String?  @map("mana_cost")
+  typeLine      String   @map("type_line")
+  colors        String[] // ej. ["W", "U"] — vacio para cartas incoloras
+  colorIdentity String[] @map("color_identity") // incluye simbolos de coste en el texto de reglas — usado para validar Commander
+  rarity        String
+  set           String
+  imageUri      String?  @map("image_uri")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   collectionEntries UserCollection[]
   deckEntries       DeckCard[]
+  commanderOf       Deck[]           @relation("DeckCommander")
 
   @@map("cards")
 }
@@ -65,14 +67,16 @@ enum DeckFormat {
 }
 
 model Deck {
-  id        String     @id @default(uuid())
-  userId    String     @map("user_id")
-  name      String
-  format    DeckFormat
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+  id              String     @id @default(uuid())
+  userId          String     @map("user_id")
+  name            String
+  format          DeckFormat
+  commanderCardId String?    @map("commander_card_id")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
-  cards DeckCard[]
+  commander Card?      @relation("DeckCommander", fields: [commanderCardId], references: [id])
+  cards     DeckCard[]
 
   @@index([userId])
   @@map("decks")

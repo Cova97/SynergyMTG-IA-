@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { DecksService } from './decks.service';
 import { CreateDeckDto } from './dto/create-deck.dto';
 import { AddCardToDeckDto } from './dto/add-card-to-deck.dto';
+import { SetCommanderDto } from './dto/set-commander.dto';
 
 @Controller('decks')
 export class DecksController {
@@ -29,5 +30,17 @@ export class DecksController {
   @Post(':deckId/cards')
   addCard(@Param('deckId') deckId: string, @Body() dto: AddCardToDeckDto) {
     return this.decksService.addCardToDeck(deckId, dto.cardId, dto.quantity);
+  }
+
+  /** POST /decks/:deckId/commander — body: { cardId } (solo formato Commander) */
+  @Post(':deckId/commander')
+  setCommander(@Param('deckId') deckId: string, @Body() dto: SetCommanderDto) {
+    return this.decksService.setCommander(deckId, dto.cardId);
+  }
+
+  /** GET /decks/:deckId/validate — revisa si el deck cumple el tamaño de su formato */
+  @Get(':deckId/validate')
+  validateDeck(@Param('deckId') deckId: string) {
+    return this.decksService.validateDeck(deckId);
   }
 }

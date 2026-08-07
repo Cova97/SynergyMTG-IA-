@@ -9,6 +9,7 @@ export interface CardData {
   mana_cost: string | null;
   type_line: string;
   colors: string[];
+  color_identity: string[];
   rarity: string;
   set: string;
   image_uri: string | null;
@@ -59,6 +60,7 @@ export class CardsService {
         manaCost: cardData.mana_cost,
         typeLine: cardData.type_line,
         colors: cardData.colors,
+        colorIdentity: cardData.color_identity,
         rarity: cardData.rarity,
         set: cardData.set,
         imageUri: cardData.image_uri,
@@ -92,6 +94,7 @@ export class CardsService {
       mana_cost: card.manaCost,
       type_line: card.typeLine,
       colors: card.colors,
+      color_identity: card.colorIdentity,
       rarity: card.rarity,
       set: card.set,
       image_uri: card.imageUri,
@@ -114,6 +117,7 @@ export class CardsService {
       mana_cost: raw.mana_cost ?? null,
       type_line: raw.type_line ?? '',
       colors: raw.colors ?? [],
+      color_identity: raw.color_identity ?? [],
       rarity: raw.rarity ?? '',
       set: raw.set ?? '',
       image_uri: raw.image_uris?.normal ?? raw.card_faces?.[0]?.image_uris?.normal ?? null,

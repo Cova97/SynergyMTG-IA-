@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
+import { CardsModule } from '../cards/cards.module';
 import { CollectionModule } from '../collection/collection.module';
 import { DecksController } from './decks.controller';
 import { DecksService } from './decks.service';
 
 @Module({
-  imports: [CollectionModule],
+  imports: [CardsModule, CollectionModule],
   controllers: [DecksController],
   providers: [DecksService],
   exports: [DecksService],

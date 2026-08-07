@@ -63,6 +63,7 @@ export class CollectionService {
         mana_cost: e.card.manaCost,
         type_line: e.card.typeLine,
         colors: e.card.colors,
+        color_identity: e.card.colorIdentity,
         rarity: e.card.rarity,
         set: e.card.set,
         image_uri: e.card.imageUri,

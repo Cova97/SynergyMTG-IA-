@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: synergymtg-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: synergymtg
+      POSTGRES_PASSWORD: synergymtg_dev_password
+      POSTGRES_DB: synergymtg
+    ports:
+      - '5433:5432'
+    volumes:
+      - synergymtg_pgdata:/var/lib/postgresql/data
+
+volumes:
+  synergymtg_pgdata:

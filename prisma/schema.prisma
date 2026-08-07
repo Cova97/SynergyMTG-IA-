@@ -1,0 +1,97 @@
+// prisma/schema.prisma
+//
+// Reemplaza el almacenamiento en memoria de CollectionService y
+// DecksService. La interfaz publica de esos servicios no deberia
+// cambiar cuando se conecten estos modelos, solo la implementacion
+// interna (Map -> PrismaService).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---- Card ----
+// Cache local de los datos de Scryfall. Se llena la primera vez que
+// se resuelve una carta por nombre (CardsService) y de ahi en
+// adelante se lee de aqui, no se vuelve a golpear la API por la
+// misma carta.
+model Card {
+  id         String   @id // UUID real de Scryfall, no autogenerado
+  name       String
+  oracleText String   @db.Text @map("oracle_text")
+  manaCost   String?  @map("mana_cost")
+  typeLine   String   @map("type_line")
+  colors     String[] // ej. ["W", "U"] — vacio para cartas incoloras
+  rarity     String
+  set        String
+  imageUri   String?  @map("image_uri")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  collectionEntries UserCollection[]
+  deckEntries       DeckCard[]
+
+  @@map("cards")
+}
+
+// ---- UserCollection ----
+// Que cartas tiene cada usuario y cuantas copias. Una fila por
+// combinacion (userId, cardId) — si el usuario agrega mas copias de
+// una carta que ya tiene, se actualiza la cantidad en la misma fila
+// en vez de crear una nueva (mismo comportamiento que ya tenia
+// CollectionService en memoria).
+model UserCollection {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  cardId    String   @map("card_id")
+  quantity  Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId]) // una sola fila por usuario+carta
+  @@index([userId])
+  @@map("user_collection")
+}
+
+// ---- Deck ----
+enum DeckFormat {
+  casual
+  competitive
+  commander
+  experimental
+}
+
+model Deck {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  name      String
+  format    DeckFormat
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  cards DeckCard[]
+
+  @@index([userId])
+  @@map("decks")
+}
+
+// ---- DeckCard ----
+// Que cartas (y cuantas) estan metidas en un deck especifico. La
+// validacion de "solo puedes meter cartas que tienes en tu coleccion"
+// vive en DecksService, no aqui — el schema no impone esa regla de
+// negocio, solo la relacion.
+model DeckCard {
+  id       String @id @default(uuid())
+  deckId   String @map("deck_id")
+  cardId   String @map("card_id")
+  quantity Int    @default(1)
+
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([deckId, cardId]) // una sola fila por deck+carta
+  @@map("deck_cards")
+}

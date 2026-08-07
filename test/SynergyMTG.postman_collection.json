@@ -7,6 +7,7 @@
     { "key": "baseUrl", "value": "http://localhost:3000" },
     { "key": "userId", "value": "cova-test" },
     { "key": "cardId", "value": "" },
+    { "key": "commanderCardId", "value": "" },
     { "key": "deckId", "value": "" }
   ],
   "item": [
@@ -32,6 +33,29 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Zuran Orb\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/cards/resolve", "host": ["{{baseUrl}}"], "path": ["cards", "resolve"] }
+          }
+        },
+        {
+          "name": "Resolver comandante (Raiyuu, Storm's Edge)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) { pm.collectionVariables.set('commanderCardId', json.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Raiyuu, Storm's Edge\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/cards/resolve", "host": ["{{baseUrl}}"], "path": ["cards", "resolve"] }
           }
@@ -84,6 +108,22 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cardName\": \"Ramunap Excavator\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collection/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collection", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Agregar comandante a mi colección (Raiyuu, Storm's Edge)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardName\": \"Raiyuu, Storm's Edge\",\n  \"quantity\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/collection/{{userId}}",
@@ -148,6 +188,22 @@
           }
         },
         {
+          "name": "Designar comandante (usa {{commanderCardId}} y {{deckId}})",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": \"{{commanderCardId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/decks/{{deckId}}/commander",
+              "host": ["{{baseUrl}}"],
+              "path": ["decks", "{{deckId}}", "commander"]
+            }
+          }
+        },
+        {
           "name": "Agregar carta al deck (usa {{cardId}} y {{deckId}})",
           "request": {
             "method": "POST",
@@ -168,6 +224,17 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/decks/{{deckId}}", "host": ["{{baseUrl}}"], "path": ["decks", "{{deckId}}"] }
+          }
+        },
+        {
+          "name": "Validar completitud del deck (tamaño/comandante segun formato)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/decks/{{deckId}}/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["decks", "{{deckId}}", "validate"]
+            }
           }
         },
         {

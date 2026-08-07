@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { Card as PrismaCard } from '@prisma/client';
 
 export interface CardData {
   id: string; // UUID real de Scryfall
@@ -21,21 +23,19 @@ const SCRYFALL_HEADERS = {
 export class CardsService {
   private readonly logger = new Logger(CardsService.name);
 
-  // Cache en memoria: id de Scryfall -> datos de la carta. Evita
-  // volver a golpear la API por cartas ya resueltas antes. Se pierde
-  // al reiniciar el proceso — cuando se conecte Prisma, esto se
-  // reemplaza por la tabla Card real (misma interfaz publica, el
-  // resto del backend no se entera del cambio).
-  private readonly cache = new Map<string, CardData>();
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Resuelve un nombre de carta contra Scryfall (fuzzy match — tolera
-   * errores tipograficos). Si ya esta en cache por nombre, no vuelve
-   * a llamar a la API.
+   * Resuelve un nombre de carta: primero busca en Postgres (cache
+   * persistente); si no esta, la busca en Scryfall (fuzzy match) y la
+   * guarda antes de regresarla. Asi, la segunda vez que alguien pida
+   * la misma carta, no se vuelve a llamar a la API externa.
    */
   async resolveByName(name: string): Promise<CardData> {
-    const cached = this.findInCacheByName(name);
-    if (cached) return cached;
+    const existing = await this.prisma.card.findFirst({
+      where: { name: { equals: name.trim(), mode: 'insensitive' } },
+    });
+    if (existing) return this.fromPrisma(existing);
 
     const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
     const res = await fetch(url, { headers: SCRYFALL_HEADERS });
@@ -47,20 +47,34 @@ export class CardsService {
     }
 
     const raw = await res.json();
-    const card = this.mapScryfallCard(raw);
-    this.cache.set(card.id, card);
-    return card;
+    const cardData = this.mapScryfallCard(raw);
+
+    const saved = await this.prisma.card.upsert({
+      where: { id: cardData.id },
+      update: {}, // si ya existe (carrera entre requests), no se pisa
+      create: {
+        id: cardData.id,
+        name: cardData.name,
+        oracleText: cardData.oracle_text,
+        manaCost: cardData.mana_cost,
+        typeLine: cardData.type_line,
+        colors: cardData.colors,
+        rarity: cardData.rarity,
+        set: cardData.set,
+        imageUri: cardData.image_uri,
+      },
+    });
+
+    return this.fromPrisma(saved);
   }
 
-  /** Regresa una carta ya cacheada por su id, o null si nunca se resolvio. */
-  getById(id: string): CardData | null {
-    return this.cache.get(id) ?? null;
+  /** Regresa una carta ya guardada en Postgres por su id, o null si nunca se resolvio. */
+  async getById(id: string): Promise<CardData | null> {
+    const card = await this.prisma.card.findUnique({ where: { id } });
+    return card ? this.fromPrisma(card) : null;
   }
 
-  /**
-   * Autocomplete para UI de busqueda — no cachea resultados completos,
-   * solo regresa nombres sugeridos.
-   */
+  /** Autocomplete para UI de busqueda — no persiste nada, solo sugiere nombres. */
   async autocomplete(query: string): Promise<string[]> {
     const url = `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}`;
     const res = await fetch(url, { headers: SCRYFALL_HEADERS });
@@ -70,12 +84,18 @@ export class CardsService {
     return data.data ?? [];
   }
 
-  private findInCacheByName(name: string): CardData | null {
-    const normalized = name.trim().toLowerCase();
-    for (const card of this.cache.values()) {
-      if (card.name.toLowerCase() === normalized) return card;
-    }
-    return null;
+  private fromPrisma(card: PrismaCard): CardData {
+    return {
+      id: card.id,
+      name: card.name,
+      oracle_text: card.oracleText,
+      mana_cost: card.manaCost,
+      type_line: card.typeLine,
+      colors: card.colors,
+      rarity: card.rarity,
+      set: card.set,
+      image_uri: card.imageUri,
+    };
   }
 
   private mapScryfallCard(raw: any): CardData {

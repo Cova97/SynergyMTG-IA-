@@ -16,11 +16,11 @@ export class AnalysisController {
   /** GET /analysis/deck/:deckId — busca combos solo entre las cartas de ese deck */
   @Get('deck/:deckId')
   async analyzeDeck(@Param('deckId') deckId: string) {
-    const deck = this.decksService.getDeck(deckId);
+    const deck = await this.decksService.getDeck(deckId);
 
     const cards: CardInput[] = [];
-    for (const cardId of deck.cards.keys()) {
-      const card = this.cardsService.getById(cardId);
+    for (const entry of deck.cards) {
+      const card = await this.cardsService.getById(entry.cardId);
       if (card) cards.push({ id: card.id, name: card.name, oracle_text: card.oracle_text });
     }
 
@@ -34,7 +34,7 @@ export class AnalysisController {
   /** GET /analysis/collection/:userId — busca combos en toda la colección del usuario */
   @Get('collection/:userId')
   async analyzeCollection(@Param('userId') userId: string) {
-    const entries = this.collectionService.getCollection(userId);
+    const entries = await this.collectionService.getCollection(userId);
     const cards: CardInput[] = entries.map((e) => ({
       id: e.card.id,
       name: e.card.name,

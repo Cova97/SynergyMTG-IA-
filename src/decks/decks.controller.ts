@@ -22,13 +22,7 @@ export class DecksController {
   /** GET /decks/:deckId */
   @Get(':deckId')
   getDeck(@Param('deckId') deckId: string) {
-    const deck = this.decksService.getDeck(deckId);
-    return {
-      id: deck.id,
-      name: deck.name,
-      format: deck.format,
-      cards: [...deck.cards.entries()].map(([cardId, quantity]) => ({ cardId, quantity })),
-    };
+    return this.decksService.getDeck(deckId);
   }
 
   /** POST /decks/:deckId/cards — body: { cardId, quantity } */

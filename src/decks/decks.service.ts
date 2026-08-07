@@ -1,14 +1,20 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
 import { CollectionService } from '../collection/collection.service';
 import { DeckFormat } from './dto/create-deck.dto';
 
-export interface Deck {
+export interface DeckCardEntry {
+  cardId: string;
+  cardName: string;
+  quantity: number;
+}
+
+export interface DeckDetail {
   id: string;
   userId: string;
   name: string;
   format: DeckFormat;
-  cards: Map<string, number>; // cardId -> cantidad en el deck
+  cards: DeckCardEntry[];
 }
 
 export interface DeckSummary {
@@ -18,45 +24,38 @@ export interface DeckSummary {
   cardCount: number;
 }
 
-// TODO: reemplazar por las tablas Deck/DeckCard de Prisma. La logica
-// de validacion (solo cartas propias, reglas por formato) se queda
-// igual, solo cambia donde se guardan los datos.
 @Injectable()
 export class DecksService {
-  private readonly decks = new Map<string, Deck>();
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly collectionService: CollectionService,
+  ) {}
 
-  constructor(private readonly collectionService: CollectionService) {}
-
-  createDeck(userId: string, name: string, format: DeckFormat): DeckSummary {
-    const deck: Deck = {
-      id: randomUUID(),
-      userId,
-      name,
-      format,
-      cards: new Map(),
-    };
-    this.decks.set(deck.id, deck);
-    return this.toSummary(deck);
+  async createDeck(userId: string, name: string, format: DeckFormat): Promise<DeckSummary> {
+    const deck = await this.prisma.deck.create({
+      data: { userId, name, format: format as any },
+    });
+    return { id: deck.id, name: deck.name, format: deck.format as DeckFormat, cardCount: 0 };
   }
 
-  addCardToDeck(deckId: string, cardId: string, quantity: number): DeckSummary {
-    const deck = this.getDeckOrThrow(deckId);
+  async addCardToDeck(deckId: string, cardId: string, quantity: number): Promise<DeckSummary> {
+    const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
+    if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
 
     // Regla central del deckbuilder: solo se puede usar una carta si
     // esta en la coleccion del usuario, y no mas copias de las que
     // realmente posee.
-    const owned = this.collectionService
-      .getCollection(deck.userId)
-      .find((entry) => entry.card.id === cardId);
-
+    const owned = (await this.collectionService.getCollection(deck.userId)).find(
+      (entry) => entry.card.id === cardId,
+    );
     if (!owned) {
-      throw new BadRequestException(
-        'No puedes agregar una carta que no esta en tu coleccion',
-      );
+      throw new BadRequestException('No puedes agregar una carta que no esta en tu coleccion');
     }
 
-    const currentInDeck = deck.cards.get(cardId) ?? 0;
-    const newTotal = currentInDeck + quantity;
+    const currentEntry = await this.prisma.deckCard.findUnique({
+      where: { deckId_cardId: { deckId, cardId } },
+    });
+    const newTotal = (currentEntry?.quantity ?? 0) + quantity;
 
     if (newTotal > owned.quantity) {
       throw new BadRequestException(
@@ -66,34 +65,69 @@ export class DecksService {
 
     // Regla basica de formato: Commander es singleton (salvo tierras
     // basicas). Reglas mas completas por formato quedan pendientes.
-    if (deck.format === 'commander' && newTotal > 1 && !owned.card.type_line.includes('Basic Land')) {
+    if (
+      deck.format === 'commander' &&
+      newTotal > 1 &&
+      !owned.card.type_line.includes('Basic Land')
+    ) {
       throw new BadRequestException(
         `Commander es singleton: no puedes tener mas de 1 copia de "${owned.card.name}"`,
       );
     }
 
-    deck.cards.set(cardId, newTotal);
-    return this.toSummary(deck);
+    await this.prisma.deckCard.upsert({
+      where: { deckId_cardId: { deckId, cardId } },
+      update: { quantity: newTotal },
+      create: { deckId, cardId, quantity: newTotal },
+    });
+
+    return this.getSummary(deckId);
   }
 
-  getDeck(deckId: string): Deck {
-    return this.getDeckOrThrow(deckId);
-  }
-
-  listDecksForUser(userId: string): DeckSummary[] {
-    return [...this.decks.values()]
-      .filter((d) => d.userId === userId)
-      .map((d) => this.toSummary(d));
-  }
-
-  private getDeckOrThrow(deckId: string): Deck {
-    const deck = this.decks.get(deckId);
+  async getDeck(deckId: string): Promise<DeckDetail> {
+    const deck = await this.prisma.deck.findUnique({
+      where: { id: deckId },
+      include: { cards: { include: { card: true } } },
+    });
     if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
-    return deck;
+
+    return {
+      id: deck.id,
+      userId: deck.userId,
+      name: deck.name,
+      format: deck.format as DeckFormat,
+      cards: deck.cards.map((dc) => ({
+        cardId: dc.cardId,
+        cardName: dc.card.name,
+        quantity: dc.quantity,
+      })),
+    };
   }
 
-  private toSummary(deck: Deck): DeckSummary {
-    const cardCount = [...deck.cards.values()].reduce((sum, qty) => sum + qty, 0);
-    return { id: deck.id, name: deck.name, format: deck.format, cardCount };
+  async listDecksForUser(userId: string): Promise<DeckSummary[]> {
+    const decks = await this.prisma.deck.findMany({
+      where: { userId },
+      include: { cards: true },
+    });
+
+    return decks.map((d) => ({
+      id: d.id,
+      name: d.name,
+      format: d.format as DeckFormat,
+      cardCount: d.cards.reduce((sum, c) => sum + c.quantity, 0),
+    }));
+  }
+
+  private async getSummary(deckId: string): Promise<DeckSummary> {
+    const deck = await this.prisma.deck.findUniqueOrThrow({
+      where: { id: deckId },
+      include: { cards: true },
+    });
+    return {
+      id: deck.id,
+      name: deck.name,
+      format: deck.format as DeckFormat,
+      cardCount: deck.cards.reduce((sum, c) => sum + c.quantity, 0),
+    };
   }
 }

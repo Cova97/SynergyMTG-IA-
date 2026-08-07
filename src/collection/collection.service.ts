@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CardsService, CardData } from '../cards/cards.service';
 
 export interface CollectionEntry {
@@ -6,58 +7,66 @@ export interface CollectionEntry {
   quantity: number;
 }
 
-// TODO: reemplazar por la tabla UserCollection de Prisma cuando este
-// el schema. La interfaz publica (addCard/getCollection/removeCard)
-// no deberia cambiar, solo la implementacion interna.
 @Injectable()
 export class CollectionService {
-  // userId -> (cardId -> cantidad)
-  private readonly collections = new Map<string, Map<string, number>>();
-
-  constructor(private readonly cardsService: CardsService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cardsService: CardsService,
+  ) {}
 
   async addCard(userId: string, cardName: string, quantity: number): Promise<CollectionEntry> {
+    // Se resuelve primero para garantizar que la carta ya exista en
+    // la tabla Card (llave foranea de UserCollection).
     const card = await this.cardsService.resolveByName(cardName);
 
-    const userCollection = this.getOrCreateUserMap(userId);
-    const currentQty = userCollection.get(card.id) ?? 0;
-    userCollection.set(card.id, currentQty + quantity);
+    const entry = await this.prisma.userCollection.upsert({
+      where: { userId_cardId: { userId, cardId: card.id } },
+      update: { quantity: { increment: quantity } },
+      create: { userId, cardId: card.id, quantity },
+    });
 
-    return { card, quantity: currentQty + quantity };
+    return { card, quantity: entry.quantity };
   }
 
-  removeCard(userId: string, cardId: string, quantity: number): void {
-    const userCollection = this.collections.get(userId);
-    if (!userCollection) return;
+  async removeCard(userId: string, cardId: string, quantity: number): Promise<void> {
+    const existing = await this.prisma.userCollection.findUnique({
+      where: { userId_cardId: { userId, cardId } },
+    });
+    if (!existing) return;
 
-    const currentQty = userCollection.get(cardId) ?? 0;
-    const newQty = currentQty - quantity;
+    const newQty = existing.quantity - quantity;
 
     if (newQty <= 0) {
-      userCollection.delete(cardId);
+      await this.prisma.userCollection.delete({
+        where: { userId_cardId: { userId, cardId } },
+      });
     } else {
-      userCollection.set(cardId, newQty);
+      await this.prisma.userCollection.update({
+        where: { userId_cardId: { userId, cardId } },
+        data: { quantity: newQty },
+      });
     }
   }
 
-  getCollection(userId: string): CollectionEntry[] {
-    const userCollection = this.collections.get(userId);
-    if (!userCollection) return [];
+  async getCollection(userId: string): Promise<CollectionEntry[]> {
+    const entries = await this.prisma.userCollection.findMany({
+      where: { userId },
+      include: { card: true },
+    });
 
-    const entries: CollectionEntry[] = [];
-    for (const [cardId, quantity] of userCollection.entries()) {
-      const card = this.cardsService.getById(cardId);
-      if (card) entries.push({ card, quantity });
-    }
-    return entries;
-  }
-
-  private getOrCreateUserMap(userId: string): Map<string, number> {
-    let userCollection = this.collections.get(userId);
-    if (!userCollection) {
-      userCollection = new Map();
-      this.collections.set(userId, userCollection);
-    }
-    return userCollection;
+    return entries.map((e) => ({
+      quantity: e.quantity,
+      card: {
+        id: e.card.id,
+        name: e.card.name,
+        oracle_text: e.card.oracleText,
+        mana_cost: e.card.manaCost,
+        type_line: e.card.typeLine,
+        colors: e.card.colors,
+        rarity: e.card.rarity,
+        set: e.card.set,
+        image_uri: e.card.imageUri,
+      },
+    }));
   }
 }

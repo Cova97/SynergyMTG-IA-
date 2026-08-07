@@ -1,0 +1,214 @@
+{
+  "info": {
+    "name": "SynergyMTG API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "userId", "value": "cova-test" },
+    { "key": "cardId", "value": "" },
+    { "key": "deckId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Cards",
+      "item": [
+        {
+          "name": "Resolver carta por nombre (Zuran Orb)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) { pm.collectionVariables.set('cardId', json.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zuran Orb\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/cards/resolve", "host": ["{{baseUrl}}"], "path": ["cards", "resolve"] }
+          }
+        },
+        {
+          "name": "Autocomplete",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cards/autocomplete?q=zuran",
+              "host": ["{{baseUrl}}"],
+              "path": ["cards", "autocomplete"],
+              "query": [{ "key": "q", "value": "zuran" }]
+            }
+          }
+        },
+        {
+          "name": "Obtener carta por id (usa {{cardId}} del paso anterior)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/cards/{{cardId}}", "host": ["{{baseUrl}}"], "path": ["cards", "{{cardId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Collection",
+      "item": [
+        {
+          "name": "Agregar carta a mi colección",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardName\": \"Zuran Orb\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collection/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collection", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Agregar Ramunap Excavator a mi colección",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardName\": \"Ramunap Excavator\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collection/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collection", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Ver mi colección completa",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/collection/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collection", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Quitar una carta de mi colección",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/collection/{{userId}}/{{cardId}}?quantity=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["collection", "{{userId}}", "{{cardId}}"],
+              "query": [{ "key": "quantity", "value": "1" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Decks",
+      "item": [
+        {
+          "name": "Crear deck",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) { pm.collectionVariables.set('deckId', json.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mazo de prueba\",\n  \"format\": \"commander\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/decks/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["decks", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Agregar carta al deck (usa {{cardId}} y {{deckId}})",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": \"{{cardId}}\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/decks/{{deckId}}/cards",
+              "host": ["{{baseUrl}}"],
+              "path": ["decks", "{{deckId}}", "cards"]
+            }
+          }
+        },
+        {
+          "name": "Ver un deck",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/decks/{{deckId}}", "host": ["{{baseUrl}}"], "path": ["decks", "{{deckId}}"] }
+          }
+        },
+        {
+          "name": "Listar mis decks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/decks/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["decks", "user", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Analysis (motor de reglas + IA)",
+      "item": [
+        {
+          "name": "Analizar toda mi colección",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analysis/collection/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analysis", "collection", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Analizar un deck específico",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analysis/deck/{{deckId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["analysis", "deck", "{{deckId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

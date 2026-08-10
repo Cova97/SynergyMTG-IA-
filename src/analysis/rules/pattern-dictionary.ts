@@ -575,8 +575,35 @@ export function expandWithImplications(resources: Set<ResourceType>): Set<Resour
   return expanded;
 }
 
-/** Analiza el oracle_text de una carta y regresa los patrones que matchea. */
-export function tagCard(cardId: string, oracleText: string): TaggedCard {
+// Patron sintetico: no viene de un regex contra oracle_text (nunca
+// dice "yo ataco" en el texto), sino de la LINEA DE TIPO de la carta.
+// Cualquier criatura sin Defender puede atacar — sin esto,
+// 'creature_attacks' nunca tenia productor, y triggers reales como
+// "whenever a Samurai or Warrior attacks alone" (Raiyuu, Selfless
+// Samurai, Akki Battle Squad) nunca podian conectarse entre si,
+// aunque en el juego real SI combinan (cualquiera de ellas atacando
+// activa a las demas).
+const CAN_ATTACK_PATTERN: Pattern = {
+  id: 'creature_can_attack',
+  regex: /(?:)/, // no se usa contra oracle_text, se aplica por type_line en tagCard
+  produces: ['creature_attacks'],
+  consumes: [],
+  description: 'Cualquier criatura sin Defender puede atacar (basado en type_line, no en oracle_text)',
+};
+
+/**
+ * Analiza una carta y regresa los patrones que matchea. type_line es
+ * opcional para no romper llamadas viejas, pero sin el, 'creature_attacks'
+ * nunca se produce para esa carta.
+ */
+export function tagCard(cardId: string, oracleText: string, typeLine?: string): TaggedCard {
   const matchedPatterns = PATTERN_DICTIONARY.filter((p) => p.regex.test(oracleText));
+
+  const isCreature = typeLine?.includes('Creature') ?? false;
+  const hasDefender = /\bDefender\b/i.test(oracleText);
+  if (isCreature && !hasDefender) {
+    matchedPatterns.push(CAN_ATTACK_PATTERN);
+  }
+
   return { cardId, matchedPatterns };
 }

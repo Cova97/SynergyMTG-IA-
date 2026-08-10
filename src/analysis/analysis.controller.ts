@@ -21,7 +21,7 @@ export class AnalysisController {
     const cards: CardInput[] = [];
     for (const entry of deck.cards) {
       const card = await this.cardsService.getById(entry.cardId);
-      if (card) cards.push({ id: card.id, name: card.name, oracle_text: card.oracle_text });
+      if (card) cards.push({ id: card.id, name: card.name, oracle_text: card.oracle_text, type_line: card.type_line });
     }
 
     // El comandante vive aparte (commanderCardId), no dentro de
@@ -32,7 +32,7 @@ export class AnalysisController {
     if (deck.commanderCardId) {
       const commander = await this.cardsService.getById(deck.commanderCardId);
       if (commander && !cards.some((c) => c.id === commander.id)) {
-        cards.push({ id: commander.id, name: commander.name, oracle_text: commander.oracle_text });
+        cards.push({ id: commander.id, name: commander.name, oracle_text: commander.oracle_text, type_line: commander.type_line });
       }
     }
 
@@ -51,6 +51,7 @@ export class AnalysisController {
       id: e.card.id,
       name: e.card.name,
       oracle_text: e.card.oracle_text,
+      type_line: e.card.type_line,
     }));
 
     if (cards.length === 0) {

@@ -14,6 +14,7 @@ export interface CardInput {
   id: string;
   name: string;
   oracle_text: string;
+  type_line?: string;
 }
 
 export interface EnrichedCandidate {
@@ -43,7 +44,7 @@ export class AnalysisService {
     const cardsById = new Map(cards.map((c) => [c.id, c]));
 
     // 1. Motor de reglas: descubre candidatos de forma deterministica
-    const tagged = cards.map((c) => tagCard(c.id, c.oracle_text));
+    const tagged = cards.map((c) => tagCard(c.id, c.oracle_text, c.type_line));
     const candidates = findComboCandidates(tagged);
 
     if (candidates.length === 0) {

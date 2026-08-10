@@ -3,6 +3,7 @@ import { AnalysisService, CardInput } from './analysis.service';
 import { CardsService } from '../cards/cards.service';
 import { CollectionService } from '../collection/collection.service';
 import { DecksService } from '../decks/decks.service';
+import { StatsService, DeckCardForStats } from './stats/stats.service';
 
 @Controller('analysis')
 export class AnalysisController {
@@ -11,6 +12,7 @@ export class AnalysisController {
     private readonly cardsService: CardsService,
     private readonly collectionService: CollectionService,
     private readonly decksService: DecksService,
+    private readonly statsService: StatsService,
   ) {}
 
   /** GET /analysis/deck/:deckId — busca combos entre las cartas del deck, incluyendo al comandante */
@@ -59,5 +61,37 @@ export class AnalysisController {
     }
 
     return this.analysisService.analyzeCollection(cards);
+  }
+
+  /** GET /analysis/deck/:deckId/mana-stats — probabilidad de tener cada color por turno */
+  @Get('deck/:deckId/mana-stats')
+  async manaStats(@Param('deckId') deckId: string) {
+    const deck = await this.decksService.getDeck(deckId);
+
+    const cardsForStats: DeckCardForStats[] = [];
+    for (const entry of deck.cards) {
+      const card = await this.cardsService.getById(entry.cardId);
+      if (card) {
+        cardsForStats.push({
+          typeLine: card.type_line,
+          oracleText: card.oracle_text,
+          quantity: entry.quantity,
+        });
+      }
+    }
+
+    // El comandante NO se cuenta aqui a proposito: vive en la zona de
+    // mando, nunca se mezcla con el mazo ni se roba de el — incluirlo
+    // en el tamaño de poblacion daria probabilidades incorrectas.
+    const deckSize = deck.cards.reduce((sum, c) => sum + c.quantity, 0);
+
+    if (deckSize === 0) {
+      throw new NotFoundException('El deck no tiene cartas para calcular estadisticas');
+    }
+
+    return {
+      deckSize,
+      manaStats: this.statsService.calculateManaStats(deckSize, cardsForStats),
+    };
   }
 }

@@ -61,6 +61,29 @@
           }
         },
         {
+          "name": "Resolver tierra basica para probar mana-stats (Mountain)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) { pm.collectionVariables.set('cardId', json.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mountain\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/cards/resolve", "host": ["{{baseUrl}}"], "path": ["cards", "resolve"] }
+          }
+        },
+        {
           "name": "Autocomplete",
           "request": {
             "method": "GET",
@@ -124,6 +147,22 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cardName\": \"Raiyuu, Storm's Edge\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/collection/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["collection", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Agregar 20 Mountain a mi colección (para probar mana-stats)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardName\": \"Mountain\",\n  \"quantity\": 20\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/collection/{{userId}}",
@@ -220,6 +259,22 @@
           }
         },
         {
+          "name": "Agregar 20 Mountain al deck (usa {{cardId}} de Mountain y {{deckId}})",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": \"{{cardId}}\",\n  \"quantity\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/decks/{{deckId}}/cards",
+              "host": ["{{baseUrl}}"],
+              "path": ["decks", "{{deckId}}", "cards"]
+            }
+          }
+        },
+        {
           "name": "Ver un deck",
           "request": {
             "method": "GET",
@@ -272,6 +327,17 @@
               "raw": "{{baseUrl}}/analysis/deck/{{deckId}}",
               "host": ["{{baseUrl}}"],
               "path": ["analysis", "deck", "{{deckId}}"]
+            }
+          }
+        },
+        {
+          "name": "Estadísticas de maná por turno (hipergeométrico)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/analysis/deck/{{deckId}}/mana-stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["analysis", "deck", "{{deckId}}", "mana-stats"]
             }
           }
         }

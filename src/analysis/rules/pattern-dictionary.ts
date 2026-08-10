@@ -34,6 +34,7 @@ export type ResourceType =
   | 'counter_minus1minus1'
   | 'mana_produced'
   | 'creature_attacks'
+  | 'creature_attacks_alone'
   | 'spell_cast'
   | 'damage_dealt'
   | 'extra_combat_step'
@@ -402,10 +403,33 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   // ---- Ataques, turnos y combates extra ----
   {
     id: 'attack_trigger',
-    regex: /whenever [\w\s,]* attacks/is,
+    // Excluye "attacks alone" a proposito — ese caso especifico lo
+    // cubre 'attacks_alone_trigger' con su propio recurso, porque son
+    // condiciones distintas (ej. Akki Battle Squad NO exige "alone",
+    // pero Raiyuu/Selfless Samurai/Ancestral Katana si). Antes se
+    // trataban como el mismo recurso generico, lo cual no distinguia
+    // cartas que exigen atacar en solitario de las que no.
+    regex: /whenever [\w\s,]* attacks(?! alone\b)/is,
     produces: ['card_drawn', 'token_created', 'life_lost'],
     consumes: ['creature_attacks'],
-    description: 'Reacciona cuando una criatura ataca',
+    description: 'Reacciona cuando una criatura ataca (sin exigir que sea en solitario)',
+  },
+  {
+    id: 'attacks_alone_trigger',
+    // Cartas que exigen especificamente atacar SIN otras criaturas
+    // (ej. Raiyuu, Storm's Edge; Selfless Samurai; Ancestral Katana).
+    // NO incluye 'creature_modified' ni 'counter_plus1plus1' (que
+    // tambien implica creature_modified): ni Raiyuu ni Selfless
+    // Samurai equipan, encantan, o ponen contadores en nada — solo
+    // desenderezan, dan combate extra, o dan lifelink/sacrifican.
+    // Ancestral Katana ya tiene su propio patron (equipment_attach_effect)
+    // que produce creature_modified correctamente; incluirlo aqui
+    // tambien causaba loops falsos (Raiyuu<->Goro-Goro, Raiyuu<->Akki
+    // Battle Squad, Goro-Goro<->Selfless Samurai, Akki<->Selfless Samurai).
+    regex: /whenever [\w\s,]* attacks alone/is,
+    produces: ['card_drawn', 'token_created', 'life_lost', 'extra_combat_step', 'permanent_untapped'],
+    consumes: ['creature_attacks_alone'],
+    description: 'Reacciona especificamente cuando una criatura ataca SOLA, sin otros atacantes',
   },
   {
     id: 'extra_combat_effect',
@@ -586,9 +610,12 @@ export function expandWithImplications(resources: Set<ResourceType>): Set<Resour
 const CAN_ATTACK_PATTERN: Pattern = {
   id: 'creature_can_attack',
   regex: /(?:)/, // no se usa contra oracle_text, se aplica por type_line en tagCard
-  produces: ['creature_attacks'],
+  // Produce ambos: cualquier criatura que puede atacar tambien puede,
+  // en un turno dado, ser la UNICA atacante — asi que satisface tanto
+  // el recurso generico como el especifico de "atacar solo".
+  produces: ['creature_attacks', 'creature_attacks_alone'],
   consumes: [],
-  description: 'Cualquier criatura sin Defender puede atacar (basado en type_line, no en oracle_text)',
+  description: 'Cualquier criatura sin Defender puede atacar, sola o acompañada (basado en type_line, no en oracle_text)',
 };
 
 /**

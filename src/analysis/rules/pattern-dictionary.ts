@@ -19,6 +19,7 @@ export type ResourceType =
   | 'creature_enters_battlefield'
   | 'flexible_creature_target_enters'
   | 'creature_copied'
+  | 'creature_modified'
   | 'permanent_untapped'
   | 'permanent_exiled'
   | 'permanent_returned_from_exile'
@@ -223,6 +224,33 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     consumes: [],
     description: 'Desendereza un permanente, habilitando reutilizar su habilidad',
   },
+
+  // ---- Modified (CR 700.9: contador, equipada, o encantada con Aura propia) ----
+  {
+    id: 'equipment_attach_effect',
+    // Cubre tanto el "Equip {costo}" estandar de cualquier Equipment
+    // como texto de auto-equipado (ej. Ancestral Katana: "you may pay
+    // {1}. When you do, attach this Equipment to it.")
+    regex: /equip \{[\w\d]+\}|attach(es|ed|ing)? (this|the) equipment/is,
+    produces: ['creature_modified'],
+    consumes: [],
+    description: 'Equipa una criatura (la vuelve "modified" segun CR 700.9)',
+  },
+  {
+    id: 'modified_creature_payoff',
+    // Cartas que premian tener/atacar con una criatura "modified"
+    // (ej. Goro-Goro, Disciple of Ryusei; Akki Battle Squad).
+    // NO incluye 'counter_plus1plus1' (implicaria creature_modified de
+    // vuelta, loop falso) ni 'damage_dealt' (ninguna de las cartas de
+    // referencia inflige dano en su texto real — esto se conectaba
+    // falsamente con grant_lifelink_effect via Selfless Samurai antes
+    // de que ese patron tambien se corrigiera).
+    regex: /modified (creature|permanent)/is,
+    produces: ['token_created', 'card_drawn', 'extra_combat_step', 'permanent_untapped'],
+    consumes: ['creature_modified'],
+    description: 'Premia tener o atacar con una criatura modificada (equipada/encantada/con contador)',
+  },
+
   {
     id: 'copy_creature_haste_tap_ability',
     regex: /\{T\}[:,].*create[s]?.*token.*copy.*(nonlegendary )?creature.*haste/is,
@@ -326,7 +354,13 @@ export const PATTERN_DICTIONARY: Pattern[] = [
     // Aproximacion: otorgar lifelink solo produce vida si la criatura
     // tambien inflige dano — se modela como que CONSUME dano infligido
     // y PRODUCE vida ganada (ej. la habilidad activada de Heliod).
-    regex: /gains? lifelink( until end of turn)?/is,
+    // Exige la palabra "target": distingue "another target creature
+    // gains lifelink" (Heliod, otorga a OTRA criatura elegida) de
+    // "it gains lifelink" (ej. Selfless Samurai: la propia criatura
+    // gana lifelink de su propio trigger, sin involucrar otra carta —
+    // sin esta exclusion se conectaba falsamente con cualquier carta
+    // que hiciera daño).
+    regex: /(another )?target creature gains? lifelink( until end of turn)?/is,
     produces: ['life_gained'],
     consumes: ['damage_dealt'],
     description: 'Otorga lifelink a una criatura (convierte dano infligido en vida ganada)',
@@ -523,6 +557,11 @@ export const RESOURCE_IMPLICATIONS: Partial<Record<ResourceType, ResourceType[]>
   land_enters_battlefield: ['land_on_battlefield'],
   creature_dies: ['creature_in_graveyard'],
   card_milled: ['creature_in_graveyard'], // si lo que se mando al cementerio es una criatura
+  // CR 700.9: un permanente es "modified" si tiene un contador, esta
+  // equipado, o tiene un Aura de su propio controlador — cualquier
+  // carta que ponga un contador tambien vuelve modificada a la criatura.
+  counter_plus1plus1: ['creature_modified'],
+  counter_minus1minus1: ['creature_modified'],
 };
 
 /** Expande un set de recursos producidos con sus implicaciones. */

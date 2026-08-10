@@ -13,7 +13,7 @@ export class AnalysisController {
     private readonly decksService: DecksService,
   ) {}
 
-  /** GET /analysis/deck/:deckId — busca combos solo entre las cartas de ese deck */
+  /** GET /analysis/deck/:deckId — busca combos entre las cartas del deck, incluyendo al comandante */
   @Get('deck/:deckId')
   async analyzeDeck(@Param('deckId') deckId: string) {
     const deck = await this.decksService.getDeck(deckId);
@@ -22,6 +22,18 @@ export class AnalysisController {
     for (const entry of deck.cards) {
       const card = await this.cardsService.getById(entry.cardId);
       if (card) cards.push({ id: card.id, name: card.name, oracle_text: card.oracle_text });
+    }
+
+    // El comandante vive aparte (commanderCardId), no dentro de
+    // deck.cards — sin esto, quedaba fuera del analisis por completo
+    // (encontrado con un caso real: Raiyuu, Storm's Edge y Asari
+    // Captain comparten la misma condicion de disparo, pero Raiyuu
+    // nunca llegaba a compararse contra el resto del deck).
+    if (deck.commanderCardId) {
+      const commander = await this.cardsService.getById(deck.commanderCardId);
+      if (commander && !cards.some((c) => c.id === commander.id)) {
+        cards.push({ id: commander.id, name: commander.name, oracle_text: commander.oracle_text });
+      }
     }
 
     if (cards.length === 0) {

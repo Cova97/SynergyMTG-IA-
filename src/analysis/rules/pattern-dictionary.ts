@@ -568,9 +568,61 @@ export const PATTERN_DICTIONARY: Pattern[] = [
   },
 ];
 
+// ---- Amplificadores: duplican una habilidad desencadenada, NO
+// producen ni consumen un recurso normal — MULTIPLICAN una conexion
+// que ya existe en el grafo. Familia de cartas con la misma plantilla
+// de texto ("if [condicion] causes a triggered ability of a permanent
+// you control to trigger, that ability triggers an additional time"),
+// confirmada via multiples ejemplos reales (Isshin, Two Heavens as
+// One entre ellas). Por eso viven separados del PATTERN_DICTIONARY
+// normal: no se les puede tratar como nodo mas del grafo produce/consume
+// sin crear conexiones falsas (encontrado antes con Isshin conectandose
+// "por accidente" solo por ser una criatura generica).
+export interface AmplifierPattern {
+  id: string;
+  regex: RegExp;
+  amplifies: ResourceType[];
+  description: string;
+}
+
+export const AMPLIFIER_PATTERNS: AmplifierPattern[] = [
+  {
+    id: 'attack_trigger_doubler',
+    // Ej. Isshin, Two Heavens as One. Ruling oficial (2022-02-18):
+    // "affects only triggered abilities with conditions that are
+    // directly related to attacking" — cubre tanto "attacks" generico
+    // como "attacks alone".
+    regex: /creature[\s\S]{0,20}attacking causes[\s\S]{0,80}triggered ability[\s\S]{0,60}trigger[s]? an additional time/is,
+    amplifies: ['creature_attacks', 'creature_attacks_alone'],
+    description: 'Duplica habilidades desencadenadas por ataques (ej. Isshin, Two Heavens as One)',
+  },
+  {
+    id: 'death_trigger_doubler',
+    // Misma familia de plantilla, version para muertes de criatura.
+    regex: /creature dying causes[\s\S]{0,80}triggered ability[\s\S]{0,60}trigger[s]? an additional time/is,
+    amplifies: ['creature_dies'],
+    description: 'Duplica habilidades desencadenadas por muerte de criatura',
+  },
+  {
+    id: 'damage_trigger_doubler',
+    // Version para dano de combate.
+    regex: /dealing combat damage[\s\S]{0,80}triggered ability[\s\S]{0,60}trigger[s]? an additional time/is,
+    amplifies: ['damage_dealt'],
+    description: 'Duplica habilidades desencadenadas por infligir dano de combate',
+  },
+  {
+    id: 'etb_trigger_doubler',
+    // Version para entrar al campo de batalla.
+    regex: /entering causes[\s\S]{0,80}triggered ability[\s\S]{0,60}trigger[s]? an additional time/is,
+    amplifies: ['creature_enters_battlefield', 'flexible_creature_target_enters'],
+    description: 'Duplica habilidades desencadenadas por entrar al campo de batalla',
+  },
+];
+
 export interface TaggedCard {
   cardId: string;
   matchedPatterns: Pattern[];
+  amplifierMatches: AmplifierPattern[];
 }
 
 // Algunos recursos son distintos conceptualmente pero uno implica al
@@ -632,5 +684,7 @@ export function tagCard(cardId: string, oracleText: string, typeLine?: string): 
     matchedPatterns.push(CAN_ATTACK_PATTERN);
   }
 
-  return { cardId, matchedPatterns };
+  const amplifierMatches = AMPLIFIER_PATTERNS.filter((p) => p.regex.test(oracleText));
+
+  return { cardId, matchedPatterns, amplifierMatches };
 }

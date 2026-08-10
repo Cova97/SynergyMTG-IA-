@@ -6,7 +6,7 @@
 // filtrados por el motor de reglas.
 
 import { Injectable, Logger } from '@nestjs/common';
-import { tagCard } from './rules/pattern-dictionary';
+import { tagCard, AMPLIFIER_PATTERNS } from './rules/pattern-dictionary';
 import { findComboCandidates, CandidateGroup } from './rules/combo-matcher';
 import { ComboAnalysisAiService } from './ai/combo-analysis-ai.service';
 
@@ -27,6 +27,12 @@ export interface EnrichedCandidate {
     explanation: string;
     confidence: 'high' | 'medium' | 'low';
   } | null;
+  /**
+   * Cartas en el pool que DUPLICAN alguna conexion de este grupo
+   * (ej. Isshin, Two Heavens as One duplicando un trigger de ataque).
+   * No son parte del combo en si — son un plus si tambien las tienes.
+   */
+  amplifiers: Array<{ cardId: string; cardName: string; description: string }>;
 }
 
 // Limite de candidatos que se mandan a la IA por corrida — protege la
@@ -77,11 +83,23 @@ export class AnalysisService {
         // No se detiene el resto del pipeline por un fallo puntual de IA
       }
 
+      const amplifierDescriptions = new Map(AMPLIFIER_PATTERNS.map((a) => [a.id, a.description]));
+      const uniqueAmplifierCardIds = [...new Set(candidate.amplifiers.map((a) => a.cardId))];
+      const amplifiers = uniqueAmplifierCardIds.map((cardId) => {
+        const matchingAmp = candidate.amplifiers.find((a) => a.cardId === cardId)!;
+        return {
+          cardId,
+          cardName: cardsById.get(cardId)?.name ?? cardId,
+          description: amplifierDescriptions.get(matchingAmp.amplifierId) ?? '',
+        };
+      });
+
       results.push({
         cardIds: candidate.cardIds,
         cardNames: candidateCards.map((c) => c.name),
         isLoop: candidate.isLoop,
         aiExplanation,
+        amplifiers,
       });
     }
 

@@ -15,6 +15,14 @@ export interface CandidateGroup {
   isLoop: boolean;
   /** Recursos que conectan cada salto de la cadena, para explicarle a la IA despues */
   connections: Array<{ from: string; to: string; via: ResourceType }>;
+  /**
+   * Cartas presentes en el pool (no necesariamente parte del grupo)
+   * que DUPLICAN alguna de las conexiones de este grupo — ej. Isshin,
+   * Two Heavens as One duplicando un trigger de ataque. No se
+   * modelan como nodos normales del grafo porque no producen ni
+   * consumen un recurso, solo multiplican una conexion que ya existe.
+   */
+  amplifiers: Array<{ cardId: string; amplifierId: string; via: ResourceType }>;
 }
 
 interface Edge {
@@ -100,6 +108,7 @@ function findLoops(edges: Edge[]): CandidateGroup[] {
             cardIds,
             isLoop: true,
             connections: [...path, edge],
+            amplifiers: [],
           });
         }
         continue;
@@ -141,10 +150,63 @@ function findChains(edges: Edge[], loopCardIds: Set<string>): CandidateGroup[] {
       cardIds: [edge.from, edge.to],
       isLoop: false,
       connections: [edge],
+      amplifiers: [],
     });
   }
 
   return chains;
+}
+
+/**
+ * Anota cada grupo candidato con las cartas del pool que DUPLICAN
+ * alguna de sus conexiones (ej. Isshin, Two Heavens as One duplicando
+ * un trigger de ataque). Recorre TODAS las cartas etiquetadas (no
+ * solo las del grupo), porque el amplificador puede ser una carta
+ * fuera del combo especifico pero presente en la coleccion/deck.
+ */
+function attachAmplifiers(candidates: CandidateGroup[], taggedCards: TaggedCard[]): void {
+  for (const candidate of candidates) {
+    const resourcesInGroup = new Set(candidate.connections.map((c) => c.via));
+
+    for (const card of taggedCards) {
+      for (const amp of card.amplifierMatches) {
+        const overlap = amp.amplifies.filter((r) => resourcesInGroup.has(r));
+        if (overlap.length > 0) {
+          for (const via of overlap) {
+            candidate.amplifiers.push({ cardId: card.cardId, amplifierId: amp.id, via });
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Descarta cadenas sueltas de 2 cartas cuando la misma informacion ya
+ * esta cubierta por un amplifier de otro grupo — ej. si Isshin ya
+ * aparece como amplifier del loop Raiyuu+Selfless Samurai, no hace
+ * falta ademas mostrar "Isshin + Raiyuu" como cadena suelta aparte,
+ * es la misma relacion contada dos veces con dos enfoques distintos.
+ */
+function filterRedundantAmplifierChains(candidates: CandidateGroup[]): CandidateGroup[] {
+  return candidates.filter((candidate) => {
+    if (candidate.isLoop || candidate.cardIds.length !== 2) return true;
+
+    const [a, b] = candidate.cardIds;
+
+    const isRedundant = candidates.some((other) => {
+      if (other === candidate) return false;
+      const otherAmplifierIds = new Set(other.amplifiers.map((amp) => amp.cardId));
+      const otherCardIds = new Set(other.cardIds);
+
+      return (
+        (otherAmplifierIds.has(a) && otherCardIds.has(b)) ||
+        (otherAmplifierIds.has(b) && otherCardIds.has(a))
+      );
+    });
+
+    return !isRedundant;
+  });
 }
 
 /**
@@ -159,6 +221,9 @@ export function findComboCandidates(taggedCards: TaggedCard[]): CandidateGroup[]
   const loopCardIds = new Set(loops.flatMap((l) => l.cardIds));
   const chains = findChains(edges, loopCardIds);
 
+  const candidates = [...loops, ...chains];
+  attachAmplifiers(candidates, taggedCards);
+
   // Loops primero: son los candidatos mas fuertes (repetibles/infinitos)
-  return [...loops, ...chains];
+  return filterRedundantAmplifierChains(candidates);
 }

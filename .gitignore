@@ -1,0 +1,31 @@
+# Dependencias — cada carpeta (backend/, frontend/) tiene las suyas,
+# este patron sin ruta especifica las cubre a ambas de una vez
+node_modules/
+
+# Backend (NestJS)
+backend/dist/
+backend/.env
+
+# Frontend (Next.js)
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/next-env.d.ts
+
+# Variables de entorno en general (por si alguna queda suelta)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Prisma — el motor generado no se versiona, solo el schema y las migraciones
+backend/prisma/generated/

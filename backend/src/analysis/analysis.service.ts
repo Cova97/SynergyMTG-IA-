@@ -33,6 +33,18 @@ export interface EnrichedCandidate {
    * No son parte del combo en si — son un plus si tambien las tienes.
    */
   amplifiers: Array<{ cardId: string; cardName: string; description: string }>;
+  /**
+   * Las conexiones exactas del grafo (que carta produce que recurso
+   * que otra consume), con nombres ya resueltos — el frontend las usa
+   * para dibujar el grafo real, no solo la lista de cartas del grupo.
+   */
+  connections: Array<{
+    fromCardId: string;
+    fromCardName: string;
+    toCardId: string;
+    toCardName: string;
+    via: string;
+  }>;
 }
 
 // Limite de candidatos que se mandan a la IA por corrida — protege la
@@ -94,12 +106,21 @@ export class AnalysisService {
         };
       });
 
+      const connections = candidate.connections.map((c) => ({
+        fromCardId: c.from,
+        fromCardName: cardsById.get(c.from)?.name ?? c.from,
+        toCardId: c.to,
+        toCardName: cardsById.get(c.to)?.name ?? c.to,
+        via: c.via,
+      }));
+
       results.push({
         cardIds: candidate.cardIds,
         cardNames: candidateCards.map((c) => c.name),
         isLoop: candidate.isLoop,
         aiExplanation,
         amplifiers,
+        connections,
       });
     }
 

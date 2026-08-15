@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f1115;
+  --foreground: #edeef0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Sistema de diseño de SynergyMTG */
+  --color-bg: #0f1115;
+  --color-surface: #171a21;
+  --color-surface-raised: #1d212b;
+  --color-border: #2a2e38;
+  --color-text-primary: #edeef0;
+  --color-text-muted: #9095a3;
+  --color-accent: #7c6cff;
+  --color-accent-dim: #5b4fcc;
+
+  /* Colores de mana reales, usados funcionalmente (no solo decorativos) */
+  --color-mana-W: #f8f6d8;
+  --color-mana-U: #3b82c4;
+  --color-mana-B: #8b7ec8;
+  --color-mana-R: #d36b4a;
+  --color-mana-G: #5a9b6e;
+
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+
+  --shadow-glow: 0 0 24px -4px rgba(124, 108, 255, 0.35);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-body), sans-serif;
+}
+
+/* @xyflow/react necesita su hoja de estilos base, importada en SynergyGraph.tsx */
+.react-flow__attribution {
+  display: none;
+}

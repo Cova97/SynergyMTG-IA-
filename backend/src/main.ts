@@ -9,7 +9,7 @@ async function bootstrap() {
   // (localhost:3000) hacia el backend (localhost:3001) — son origenes
   // distintos, y por default Nest no permite peticiones cross-origin.
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL ?? 'http://localhost:3002',
   });
 
   // Valida automaticamente los DTOs (class-validator) en cada

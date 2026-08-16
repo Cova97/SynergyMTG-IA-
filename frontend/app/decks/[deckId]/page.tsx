@@ -6,8 +6,13 @@ import AddCardToDeckForm from '@/components/AddCardToDeckForm';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import ManaStatsPanel from '@/components/ManaStatsPanel';
 
-export default async function DeckDetailPage({ params }: { params: { deckId: string } }) {
-  const deck = await getDeck(params.deckId);
+export default async function DeckDetailPage({
+  params,
+}: {
+  params: Promise<{ deckId: string }>;
+}) {
+  const { deckId } = await params;
+  const deck = await getDeck(deckId);
 
   const cardIds = [
     ...deck.cards.map((c) => c.cardId),
@@ -20,8 +25,8 @@ export default async function DeckDetailPage({ params }: { params: { deckId: str
   });
 
   const [validation, manaStats] = await Promise.all([
-    validateDeck(params.deckId).catch(() => null),
-    deck.cards.length > 0 ? getManaStats(params.deckId).catch(() => null) : Promise.resolve(null),
+    validateDeck(deckId).catch(() => null),
+    deck.cards.length > 0 ? getManaStats(deckId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const totalCards = deck.cards.reduce((sum, c) => sum + c.quantity, 0);

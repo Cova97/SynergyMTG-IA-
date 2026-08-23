@@ -13,6 +13,24 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---- User ----
+// username se genera automaticamente al registrarse (ej. "Aldo Cova"
+// -> "aldo") — es lo que el usuario usa para iniciar sesion despues,
+// junto con su contrasena. displayName conserva el nombre tal como lo
+// escribio. La contrasena NUNCA se guarda en texto plano, solo su hash.
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  displayName  String   @map("display_name")
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  collectionEntries UserCollection[]
+  decks             Deck[]
+
+  @@map("users")
+}
+
 // ---- Card ----
 // Cache local de los datos de Scryfall. Se llena la primera vez que
 // se resuelve una carta por nombre (CardsService) y de ahi en
@@ -25,7 +43,7 @@ model Card {
   manaCost      String?  @map("mana_cost")
   typeLine      String   @map("type_line")
   colors        String[] // ej. ["W", "U"] — vacio para cartas incoloras
-  colorIdentity String[] @map("color_identity") // incluye simbolos de coste en el texto de reglas — usado para validar Commander
+  colorIdentity String[] @default([]) @map("color_identity") // incluye simbolos de coste en el texto de reglas — usado para validar Commander
   rarity        String
   set           String
   imageUri      String?  @map("image_uri")
@@ -46,11 +64,12 @@ model Card {
 // CollectionService en memoria).
 model UserCollection {
   id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  userId    String   @map("user_id") // coincide con User.username
   cardId    String   @map("card_id")
   quantity  Int      @default(1)
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  user User @relation(fields: [userId], references: [username], onDelete: Cascade)
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@unique([userId, cardId]) // una sola fila por usuario+carta
@@ -68,13 +87,14 @@ enum DeckFormat {
 
 model Deck {
   id              String     @id @default(uuid())
-  userId          String     @map("user_id")
+  userId          String     @map("user_id") // coincide con User.username
   name            String
   format          DeckFormat
   commanderCardId String?    @map("commander_card_id")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
+  user      User       @relation(fields: [userId], references: [username], onDelete: Cascade)
   commander Card?      @relation("DeckCommander", fields: [commanderCardId], references: [id])
   cards     DeckCard[]
 

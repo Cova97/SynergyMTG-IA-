@@ -1,31 +1,34 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CollectionService } from './collection.service';
 import { AddToCollectionDto } from './dto/add-to-collection.dto';
+import { JwtAuthGuard, AuthenticatedRequest } from '../auth/jwt-auth.guard';
 
-// NOTA: userId viene como parametro de ruta por simplicidad — cuando
-// se agregue autenticacion real, esto deberia salir del token/sesion
-// en vez de la URL.
-@Controller('collection/:userId')
+// Protegido: el userId ya no viene de la URL (cualquiera podia pedir
+// la coleccion de cualquier otro con solo saber su username) — ahora
+// sale del token, que solo el dueno tiene. Mismo patron que ya usan
+// DecksController y AnalysisController (@Req() + AuthenticatedRequest).
+@UseGuards(JwtAuthGuard)
+@Controller('collection')
 export class CollectionController {
   constructor(private readonly collectionService: CollectionService) {}
 
   @Post()
-  addCard(@Param('userId') userId: string, @Body() dto: AddToCollectionDto) {
-    return this.collectionService.addCard(userId, dto.cardName, dto.quantity);
+  addCard(@Req() req: AuthenticatedRequest, @Body() dto: AddToCollectionDto) {
+    return this.collectionService.addCard(req.user!.username, dto.cardName, dto.quantity);
   }
 
   @Get()
-  getCollection(@Param('userId') userId: string) {
-    return this.collectionService.getCollection(userId);
+  getCollection(@Req() req: AuthenticatedRequest) {
+    return this.collectionService.getCollection(req.user!.username);
   }
 
   @Delete(':cardId')
   removeCard(
-    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
     @Param('cardId') cardId: string,
     @Query('quantity') quantity: string,
   ) {
-    this.collectionService.removeCard(userId, cardId, Number(quantity ?? 1));
+    this.collectionService.removeCard(req.user!.username, cardId, Number(quantity ?? 1));
     return { removed: true };
   }
 }

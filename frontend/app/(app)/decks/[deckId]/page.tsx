@@ -1,3 +1,4 @@
+import { getServerToken } from '@/lib/auth-server';
 import { getDeck, getCardById, validateDeck, getManaStats } from '@/lib/api';
 import { CardData } from '@/lib/types';
 import CardTile from '@/components/CardTile';
@@ -12,21 +13,23 @@ export default async function DeckDetailPage({
   params: Promise<{ deckId: string }>;
 }) {
   const { deckId } = await params;
-  const deck = await getDeck(deckId);
+  const token = (await getServerToken())!;
+
+  const deck = await getDeck(token, deckId);
 
   const cardIds = [
     ...deck.cards.map((c) => c.cardId),
     ...(deck.commanderCardId ? [deck.commanderCardId] : []),
   ];
-  const cardsData = await Promise.all(cardIds.map((id) => getCardById(id).catch(() => null)));
+  const cardsData = await Promise.all(cardIds.map((id) => getCardById(token, id).catch(() => null)));
   const cardsById = new Map<string, CardData>();
   cardsData.forEach((card) => {
     if (card) cardsById.set(card.id, card);
   });
 
   const [validation, manaStats] = await Promise.all([
-    validateDeck(deckId).catch(() => null),
-    deck.cards.length > 0 ? getManaStats(deckId).catch(() => null) : Promise.resolve(null),
+    validateDeck(token, deckId).catch(() => null),
+    deck.cards.length > 0 ? getManaStats(token, deckId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const totalCards = deck.cards.reduce((sum, c) => sum + c.quantity, 0);

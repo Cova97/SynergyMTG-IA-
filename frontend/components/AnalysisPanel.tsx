@@ -2,13 +2,11 @@
 
 import { useState } from 'react';
 import { analyzeDeck, analyzeCollection } from '@/lib/api';
+import { getClientToken } from '@/lib/auth-client';
 import { EnrichedCandidate, CardData } from '@/lib/types';
 import SynergyGraph from './SynergyGraph';
 import CandidateCard from './CandidateCard';
 
-// deckId/userId son strings simples — sí se pueden pasar de un
-// componente de servidor a uno de cliente sin problema (a diferencia
-// de pasar una funcion, que Next no permite entre esa frontera).
 type Props =
   | { mode: 'deck'; deckId: string; cardsById: Map<string, CardData> }
   | { mode: 'collection'; cardsById: Map<string, CardData> };
@@ -19,11 +17,17 @@ export default function AnalysisPanel(props: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleAnalyze() {
+    const token = getClientToken();
+    if (!token) {
+      setError('Tu sesión expiró, inicia sesión de nuevo');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const result =
-        props.mode === 'deck' ? await analyzeDeck(props.deckId) : await analyzeCollection();
+        props.mode === 'deck' ? await analyzeDeck(token, props.deckId) : await analyzeCollection(token);
       setCandidates(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo analizar');

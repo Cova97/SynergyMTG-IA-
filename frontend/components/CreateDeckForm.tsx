@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createDeck } from '@/lib/api';
+import { getClientToken } from '@/lib/auth-client';
 import { DeckFormat } from '@/lib/types';
 
 const FORMATS: { value: DeckFormat; label: string }[] = [
@@ -17,15 +18,25 @@ export default function CreateDeckForm() {
   const [name, setName] = useState('');
   const [format, setFormat] = useState<DeckFormat>('commander');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
 
+    const token = getClientToken();
+    if (!token) {
+      setError('Tu sesión expiró, inicia sesión de nuevo');
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     try {
-      const deck = await createDeck(name.trim(), format);
+      const deck = await createDeck(token, name.trim(), format);
       router.push(`/decks/${deck.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo crear el deck');
     } finally {
       setLoading(false);
     }
@@ -63,6 +74,7 @@ export default function CreateDeckForm() {
       >
         {loading ? 'Creando…' : 'Crear deck'}
       </button>
+      {error && <p className="text-xs text-mana-R w-full">{error}</p>}
     </form>
   );
 }

@@ -1,116 +1,92 @@
-// lib/api.ts
-//
-// Cliente delgado hacia el backend de SynergyMTG. Nada de estado ni
-// cache aqui — cada funcion es un fetch tipado, simple de leer.
+// lib/types.ts
 
-import {
-  CardData,
-  CollectionEntry,
-  DeckDetail,
-  DeckSummary,
-  DeckValidation,
-  DeckFormat,
-  EnrichedCandidate,
-  ManaStatsResponse,
-} from './types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-export const USER_ID = process.env.NEXT_PUBLIC_USER_ID ?? 'cova-test';
-
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(body.message ?? `Error ${res.status}`);
-  }
-
-  return res.json();
+export interface CardData {
+  id: string;
+  name: string;
+  oracle_text: string;
+  mana_cost: string | null;
+  type_line: string;
+  colors: string[];
+  color_identity: string[];
+  rarity: string;
+  set: string;
+  image_uri: string | null;
 }
 
-// ---- Cards ----
-export function resolveCard(name: string): Promise<CardData> {
-  return apiFetch<CardData>('/cards/resolve', {
-    method: 'POST',
-    body: JSON.stringify({ name }),
-  });
+export interface CollectionEntry {
+  card: CardData;
+  quantity: number;
 }
 
-export function autocompleteCard(query: string): Promise<string[]> {
-  return apiFetch<string[]>(`/cards/autocomplete?q=${encodeURIComponent(query)}`);
+export type DeckFormat = 'casual' | 'competitive' | 'commander' | 'experimental';
+
+export interface DeckSummary {
+  id: string;
+  name: string;
+  format: DeckFormat;
+  cardCount: number;
 }
 
-export function getCardById(cardId: string): Promise<CardData> {
-  return apiFetch<CardData>(`/cards/${cardId}`);
+export interface DeckCardEntry {
+  cardId: string;
+  cardName: string;
+  quantity: number;
 }
 
-// ---- Collection ----
-export function getCollection(userId: string = USER_ID): Promise<CollectionEntry[]> {
-  return apiFetch<CollectionEntry[]>(`/collection/${userId}`);
+export interface DeckDetail {
+  id: string;
+  userId: string;
+  name: string;
+  format: DeckFormat;
+  commanderCardId: string | null;
+  commanderName: string | null;
+  cards: DeckCardEntry[];
 }
 
-export function addToCollection(
-  cardName: string,
-  quantity: number,
-  userId: string = USER_ID,
-): Promise<CollectionEntry> {
-  return apiFetch<CollectionEntry>(`/collection/${userId}`, {
-    method: 'POST',
-    body: JSON.stringify({ cardName, quantity }),
-  });
+export interface DeckValidation {
+  valid: boolean;
+  issues: string[];
 }
 
-// ---- Decks ----
-export function listDecks(userId: string = USER_ID): Promise<DeckSummary[]> {
-  return apiFetch<DeckSummary[]>(`/decks/user/${userId}`);
+export interface AiExplanation {
+  combo_found: boolean;
+  explanation: string;
+  confidence: 'high' | 'medium' | 'low';
 }
 
-export function getDeck(deckId: string): Promise<DeckDetail> {
-  return apiFetch<DeckDetail>(`/decks/${deckId}`);
+export interface CandidateConnection {
+  fromCardId: string;
+  fromCardName: string;
+  toCardId: string;
+  toCardName: string;
+  via: string;
 }
 
-export function createDeck(
-  name: string,
-  format: DeckFormat,
-  userId: string = USER_ID,
-): Promise<DeckSummary> {
-  return apiFetch<DeckSummary>(`/decks/${userId}`, {
-    method: 'POST',
-    body: JSON.stringify({ name, format }),
-  });
+export interface CandidateAmplifier {
+  cardId: string;
+  cardName: string;
+  description: string;
 }
 
-export function addCardToDeck(deckId: string, cardId: string, quantity: number): Promise<DeckSummary> {
-  return apiFetch<DeckSummary>(`/decks/${deckId}/cards`, {
-    method: 'POST',
-    body: JSON.stringify({ cardId, quantity }),
-  });
+export interface EnrichedCandidate {
+  cardIds: string[];
+  cardNames: string[];
+  isLoop: boolean;
+  aiExplanation: AiExplanation | null;
+  amplifiers: CandidateAmplifier[];
+  connections: CandidateConnection[];
 }
 
-export function setCommander(deckId: string, cardId: string): Promise<DeckDetail> {
-  return apiFetch<DeckDetail>(`/decks/${deckId}/commander`, {
-    method: 'POST',
-    body: JSON.stringify({ cardId }),
-  });
+export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G';
+
+export interface ManaColorStat {
+  color: ManaColor;
+  sourceCount: number;
+  probabilityOpeningHand: number;
+  probabilityByTurn: Array<{ turn: number; probability: number }>;
 }
 
-export function validateDeck(deckId: string): Promise<DeckValidation> {
-  return apiFetch<DeckValidation>(`/decks/${deckId}/validate`);
-}
-
-// ---- Analysis ----
-export function analyzeDeck(deckId: string): Promise<EnrichedCandidate[]> {
-  return apiFetch<EnrichedCandidate[]>(`/analysis/deck/${deckId}`);
-}
-
-export function analyzeCollection(userId: string = USER_ID): Promise<EnrichedCandidate[]> {
-  return apiFetch<EnrichedCandidate[]>(`/analysis/collection/${userId}`);
-}
-
-export function getManaStats(deckId: string): Promise<ManaStatsResponse> {
-  return apiFetch<ManaStatsResponse>(`/analysis/deck/${deckId}/mana-stats`);
+export interface ManaStatsResponse {
+  deckSize: number;
+  manaStats: ManaColorStat[];
 }

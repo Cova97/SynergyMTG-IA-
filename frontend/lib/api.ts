@@ -1,7 +1,8 @@
 // lib/api.ts
 //
-// Cliente delgado hacia el backend de SynergyMTG. Nada de estado ni
-// cache aqui — cada funcion es un fetch tipado, simple de leer.
+// Cliente delgado hacia el backend de SynergyMTG. Ya no maneja
+// userId — el backend lo saca del token JWT, asi que cada funcion
+// aqui recibe el token como primer argumento.
 
 import {
   CardData,
@@ -15,12 +16,15 @@ import {
 } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-export const USER_ID = process.env.NEXT_PUBLIC_USER_ID ?? 'cova-test';
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string, token: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...options?.headers,
+    },
     cache: 'no-store',
   });
 
@@ -33,84 +37,81 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ---- Cards ----
-export function resolveCard(name: string): Promise<CardData> {
-  return apiFetch<CardData>('/cards/resolve', {
+export function resolveCard(token: string, name: string): Promise<CardData> {
+  return apiFetch<CardData>('/cards/resolve', token, {
     method: 'POST',
     body: JSON.stringify({ name }),
   });
 }
 
-export function autocompleteCard(query: string): Promise<string[]> {
-  return apiFetch<string[]>(`/cards/autocomplete?q=${encodeURIComponent(query)}`);
+export function autocompleteCard(token: string, query: string): Promise<string[]> {
+  return apiFetch<string[]>(`/cards/autocomplete?q=${encodeURIComponent(query)}`, token);
 }
 
-export function getCardById(cardId: string): Promise<CardData> {
-  return apiFetch<CardData>(`/cards/${cardId}`);
+export function getCardById(token: string, cardId: string): Promise<CardData> {
+  return apiFetch<CardData>(`/cards/${cardId}`, token);
 }
 
 // ---- Collection ----
-export function getCollection(userId: string = USER_ID): Promise<CollectionEntry[]> {
-  return apiFetch<CollectionEntry[]>(`/collection/${userId}`);
+export function getCollection(token: string): Promise<CollectionEntry[]> {
+  return apiFetch<CollectionEntry[]>('/collection', token);
 }
 
-export function addToCollection(
-  cardName: string,
-  quantity: number,
-  userId: string = USER_ID,
-): Promise<CollectionEntry> {
-  return apiFetch<CollectionEntry>(`/collection/${userId}`, {
+export function addToCollection(token: string, cardName: string, quantity: number): Promise<CollectionEntry> {
+  return apiFetch<CollectionEntry>('/collection', token, {
     method: 'POST',
     body: JSON.stringify({ cardName, quantity }),
   });
 }
 
 // ---- Decks ----
-export function listDecks(userId: string = USER_ID): Promise<DeckSummary[]> {
-  return apiFetch<DeckSummary[]>(`/decks/user/${userId}`);
+export function listDecks(token: string): Promise<DeckSummary[]> {
+  return apiFetch<DeckSummary[]>('/decks', token);
 }
 
-export function getDeck(deckId: string): Promise<DeckDetail> {
-  return apiFetch<DeckDetail>(`/decks/${deckId}`);
+export function getDeck(token: string, deckId: string): Promise<DeckDetail> {
+  return apiFetch<DeckDetail>(`/decks/${deckId}`, token);
 }
 
-export function createDeck(
-  name: string,
-  format: DeckFormat,
-  userId: string = USER_ID,
-): Promise<DeckSummary> {
-  return apiFetch<DeckSummary>(`/decks/${userId}`, {
+export function createDeck(token: string, name: string, format: DeckFormat): Promise<DeckSummary> {
+  return apiFetch<DeckSummary>('/decks', token, {
     method: 'POST',
     body: JSON.stringify({ name, format }),
   });
 }
 
-export function addCardToDeck(deckId: string, cardId: string, quantity: number): Promise<DeckSummary> {
-  return apiFetch<DeckSummary>(`/decks/${deckId}/cards`, {
+export function addCardToDeck(
+  token: string,
+  deckId: string,
+  cardId: string,
+  quantity: number,
+): Promise<DeckSummary> {
+  return apiFetch<DeckSummary>(`/decks/${deckId}/cards`, token, {
     method: 'POST',
     body: JSON.stringify({ cardId, quantity }),
   });
 }
 
-export function setCommander(deckId: string, cardId: string): Promise<DeckDetail> {
-  return apiFetch<DeckDetail>(`/decks/${deckId}/commander`, {
+export function setCommander(token: string, deckId: string, cardId: string): Promise<DeckDetail> {
+  return apiFetch<DeckDetail>(`/decks/${deckId}/commander`, token, {
     method: 'POST',
     body: JSON.stringify({ cardId }),
   });
 }
 
-export function validateDeck(deckId: string): Promise<DeckValidation> {
-  return apiFetch<DeckValidation>(`/decks/${deckId}/validate`);
+export function validateDeck(token: string, deckId: string): Promise<DeckValidation> {
+  return apiFetch<DeckValidation>(`/decks/${deckId}/validate`, token);
 }
 
 // ---- Analysis ----
-export function analyzeDeck(deckId: string): Promise<EnrichedCandidate[]> {
-  return apiFetch<EnrichedCandidate[]>(`/analysis/deck/${deckId}`);
+export function analyzeDeck(token: string, deckId: string): Promise<EnrichedCandidate[]> {
+  return apiFetch<EnrichedCandidate[]>(`/analysis/deck/${deckId}`, token);
 }
 
-export function analyzeCollection(userId: string = USER_ID): Promise<EnrichedCandidate[]> {
-  return apiFetch<EnrichedCandidate[]>(`/analysis/collection/${userId}`);
+export function analyzeCollection(token: string): Promise<EnrichedCandidate[]> {
+  return apiFetch<EnrichedCandidate[]>('/analysis/collection', token);
 }
 
-export function getManaStats(deckId: string): Promise<ManaStatsResponse> {
-  return apiFetch<ManaStatsResponse>(`/analysis/deck/${deckId}/mana-stats`);
+export function getManaStats(token: string, deckId: string): Promise<ManaStatsResponse> {
+  return apiFetch<ManaStatsResponse>(`/analysis/deck/${deckId}/mana-stats`, token);
 }

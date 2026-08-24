@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { resolveCard, addCardToDeck, setCommander } from '@/lib/api';
+import { getClientToken } from '@/lib/auth-client';
 import { DeckFormat } from '@/lib/types';
 
 export default function AddCardToDeckForm({ deckId, format }: { deckId: string; format: DeckFormat }) {
@@ -17,14 +18,20 @@ export default function AddCardToDeckForm({ deckId, format }: { deckId: string; 
     e.preventDefault();
     if (!name.trim()) return;
 
+    const token = getClientToken();
+    if (!token) {
+      setError('Tu sesión expiró, inicia sesión de nuevo');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const card = await resolveCard(name.trim());
+      const card = await resolveCard(token, name.trim());
       if (asCommander) {
-        await setCommander(deckId, card.id);
+        await setCommander(token, deckId, card.id);
       } else {
-        await addCardToDeck(deckId, card.id, quantity);
+        await addCardToDeck(token, deckId, card.id, quantity);
       }
       setName('');
       setQuantity(1);

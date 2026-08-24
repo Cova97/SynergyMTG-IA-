@@ -1,10 +1,12 @@
-import Link from 'next/link';
+import { getServerToken } from '@/lib/auth-server';
 import { listDecks } from '@/lib/api';
+import Link from 'next/link';
 import CreateDeckForm from '@/components/CreateDeckForm';
 import DeckFormatBadge from '@/components/DeckFormatBadge';
 
 export default async function DecksPage() {
-  const decks = await listDecks().catch(() => []);
+  const token = (await getServerToken())!;
+  const decks = await listDecks(token).catch(() => []);
 
   return (
     <div className="px-8 py-8 max-w-3xl">

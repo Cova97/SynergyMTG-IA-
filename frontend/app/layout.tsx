@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
-import Sidebar from '@/components/Sidebar';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -27,14 +26,13 @@ export const metadata: Metadata = {
   description: 'Tu colección de Magic y las sinergias entre tus cartas',
 };
 
+// Ya NO incluye el Sidebar aqui — vive en app/(app)/layout.tsx, para
+// que login/registro no lo muestren (todavia no hay sesion ahi).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} font-body`}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 min-w-0">{children}</main>
-        </div>
+        {children}
       </body>
     </html>
   );

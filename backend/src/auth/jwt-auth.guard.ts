@@ -6,10 +6,9 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Aun NO esta conectado a ninguna ruta — se deja listo para cuando se
- * decida proteger /collection, /decks, /analysis con @UseGuards(JwtAuthGuard).
- * Al conectarlo, cada controller dejaria de recibir :userId por la URL
- * y lo tomaria de request.user.username en su lugar.
+ * Protege una ruta exigiendo un JWT valido en el header Authorization
+ * (Bearer <token>). Al pasar, deja el payload decodificado en
+ * request.user — se lee comodamente con el decorador @CurrentUser().
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {

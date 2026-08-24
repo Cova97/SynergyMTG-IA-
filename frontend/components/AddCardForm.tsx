@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { addToCollection } from '@/lib/api';
+import { getClientToken } from '@/lib/auth-client';
 
 export default function AddCardForm() {
   const router = useRouter();
@@ -15,10 +16,16 @@ export default function AddCardForm() {
     e.preventDefault();
     if (!name.trim()) return;
 
+    const token = getClientToken();
+    if (!token) {
+      setError('Tu sesión expiró, inicia sesión de nuevo');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      await addToCollection(name.trim(), quantity);
+      await addToCollection(token, name.trim(), quantity);
       setName('');
       setQuantity(1);
       router.refresh();

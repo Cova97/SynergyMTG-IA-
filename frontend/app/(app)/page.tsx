@@ -1,3 +1,4 @@
+import { getServerToken } from '@/lib/auth-server';
 import { getCollection } from '@/lib/api';
 import { CardData } from '@/lib/types';
 import CardTile from '@/components/CardTile';
@@ -5,7 +6,9 @@ import AddCardForm from '@/components/AddCardForm';
 import AnalysisPanel from '@/components/AnalysisPanel';
 
 export default async function CollectionPage() {
-  const entries = await getCollection().catch(() => []);
+  const token = (await getServerToken())!; // el layout (app) ya garantiza que existe
+
+  const entries = await getCollection(token).catch(() => []);
   const cardsById = new Map<string, CardData>(entries.map((e) => [e.card.id, e.card]));
 
   return (

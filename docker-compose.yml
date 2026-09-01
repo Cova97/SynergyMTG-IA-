@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: synergymtg-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-synergymtg}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synergymtg_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-synergymtg}
+    ports:
+      - '5433:5432'
+    volumes:
+      - synergymtg_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-synergymtg}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: synergymtg-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-synergymtg}:${POSTGRES_PASSWORD:-synergymtg_dev_password}@postgres:5432/${POSTGRES_DB:-synergymtg}
+      PORT: ${PORT:-3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: synergymtg-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      PORT: 3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+
+volumes:
+  synergymtg_pgdata:

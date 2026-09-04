@@ -53,5 +53,5 @@ EXPOSE 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application in production mode
-CMD ["node", "dist/src/main"]
+# Apply pending Prisma migrations, then start the application
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

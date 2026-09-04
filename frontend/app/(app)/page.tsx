@@ -4,11 +4,15 @@ import { CardData } from '@/lib/types';
 import CardTile from '@/components/CardTile';
 import AddCardForm from '@/components/AddCardForm';
 import AnalysisPanel from '@/components/AnalysisPanel';
+import RemoveCollectionCardButton from '@/components/RemoveCollectionCardButton';
 
 export default async function CollectionPage() {
   const token = (await getServerToken())!; // el layout (app) ya garantiza que existe
 
-  const entries = await getCollection(token).catch(() => []);
+  const entries = await getCollection(token).catch((err) => {
+    console.error('No se pudo cargar la colección:', err);
+    return [];
+  });
   const cardsById = new Map<string, CardData>(entries.map((e) => [e.card.id, e.card]));
 
   return (
@@ -34,7 +38,10 @@ export default async function CollectionPage() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3 mb-10">
             {entries.map((entry) => (
-              <CardTile key={entry.card.id} card={entry.card} quantity={entry.quantity} />
+              <div key={entry.card.id} className="relative group">
+                <CardTile card={entry.card} quantity={entry.quantity} />
+                <RemoveCollectionCardButton cardId={entry.card.id} quantity={entry.quantity} />
+              </div>
             ))}
           </div>
 

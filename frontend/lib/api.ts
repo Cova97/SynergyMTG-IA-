@@ -15,7 +15,15 @@ import {
   ManaStatsResponse,
 } from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+// En Server Components este archivo corre DENTRO del contenedor del
+// frontend, donde "localhost" no llega al contenedor del backend —
+// ahi hace falta el nombre de servicio de Docker (API_INTERNAL_URL).
+// En el navegador (Client Components) si sirve NEXT_PUBLIC_API_URL,
+// que apunta al puerto publicado en el host.
+const API_URL =
+  typeof window === 'undefined'
+    ? (process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001')
+    : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001');
 
 async function apiFetch<T>(path: string, token: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -64,6 +72,10 @@ export function addToCollection(token: string, cardName: string, quantity: numbe
   });
 }
 
+export function removeFromCollection(token: string, cardId: string, quantity: number): Promise<void> {
+  return apiFetch<void>(`/collection/${cardId}?quantity=${quantity}`, token, { method: 'DELETE' });
+}
+
 // ---- Decks ----
 export function listDecks(token: string): Promise<DeckSummary[]> {
   return apiFetch<DeckSummary[]>('/decks', token);
@@ -101,6 +113,21 @@ export function setCommander(token: string, deckId: string, cardId: string): Pro
 
 export function validateDeck(token: string, deckId: string): Promise<DeckValidation> {
   return apiFetch<DeckValidation>(`/decks/${deckId}/validate`, token);
+}
+
+export function deleteDeck(token: string, deckId: string): Promise<void> {
+  return apiFetch<void>(`/decks/${deckId}`, token, { method: 'DELETE' });
+}
+
+export function removeCardFromDeck(
+  token: string,
+  deckId: string,
+  cardId: string,
+  quantity: number,
+): Promise<DeckSummary> {
+  return apiFetch<DeckSummary>(`/decks/${deckId}/cards/${cardId}?quantity=${quantity}`, token, {
+    method: 'DELETE',
+  });
 }
 
 // ---- Analysis ----

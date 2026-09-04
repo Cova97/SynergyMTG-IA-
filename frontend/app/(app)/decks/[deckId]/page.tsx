@@ -6,6 +6,8 @@ import DeckFormatBadge from '@/components/DeckFormatBadge';
 import AddCardToDeckForm from '@/components/AddCardToDeckForm';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import ManaStatsPanel from '@/components/ManaStatsPanel';
+import RemoveDeckCardButton from '@/components/RemoveDeckCardButton';
+import DeleteDeckButton from '@/components/DeleteDeckButton';
 
 export default async function DeckDetailPage({
   params,
@@ -37,9 +39,12 @@ export default async function DeckDetailPage({
   return (
     <div className="px-8 py-8 max-w-6xl">
       <header className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <h2 className="font-display text-3xl text-text-primary">{deck.name}</h2>
-          <DeckFormatBadge format={deck.format} />
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-3xl text-text-primary">{deck.name}</h2>
+            <DeckFormatBadge format={deck.format} />
+          </div>
+          <DeleteDeckButton deckId={deck.id} />
         </div>
         {deck.commanderName ? (
           <p className="text-sm text-text-muted">
@@ -70,7 +75,12 @@ export default async function DeckDetailPage({
             {deck.cards.map((entry) => {
               const card = cardsById.get(entry.cardId);
               if (!card) return null;
-              return <CardTile key={entry.cardId} card={card} quantity={entry.quantity} />;
+              return (
+                <div key={entry.cardId} className="relative group">
+                  <CardTile card={card} quantity={entry.quantity} />
+                  <RemoveDeckCardButton deckId={deck.id} cardId={entry.cardId} quantity={entry.quantity} />
+                </div>
+              );
             })}
           </div>
         )}

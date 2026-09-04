@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CardsService } from '../cards/cards.service';
 import { CollectionService } from '../collection/collection.service';
@@ -64,9 +64,10 @@ export class DecksService {
    * el usuario debe poseerlo. No se cuenta como parte de las cartas
    * del deck (DeckCard) — vive aparte, como en el juego real.
    */
-  async setCommander(deckId: string, cardId: string): Promise<DeckDetail> {
+  async setCommander(deckId: string, cardId: string, requestingUserId: string): Promise<DeckDetail> {
     const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
     if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
+    this.assertOwnership(deck.userId, requestingUserId);
 
     if (deck.format !== 'commander') {
       throw new BadRequestException('Solo los decks de formato Commander tienen comandante');
@@ -95,12 +96,18 @@ export class DecksService {
     }
 
     await this.prisma.deck.update({ where: { id: deckId }, data: { commanderCardId: cardId } });
-    return this.getDeck(deckId);
+    return this.getDeck(deckId, requestingUserId);
   }
 
-  async addCardToDeck(deckId: string, cardId: string, quantity: number): Promise<DeckSummary> {
+  async addCardToDeck(
+    deckId: string,
+    cardId: string,
+    quantity: number,
+    requestingUserId: string,
+  ): Promise<DeckSummary> {
     const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
     if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
+    this.assertOwnership(deck.userId, requestingUserId);
 
     const owned = (await this.collectionService.getCollection(deck.userId)).find(
       (entry) => entry.card.id === cardId,
@@ -137,6 +144,13 @@ export class DecksService {
     });
 
     return this.getSummary(deckId);
+  }
+
+  /** Lanza 403 si el deck no le pertenece a quien esta pidiendo la operacion. */
+  private assertOwnership(deckOwnerId: string, requestingUserId: string): void {
+    if (deckOwnerId !== requestingUserId) {
+      throw new ForbiddenException('Este deck no es tuyo');
+    }
   }
 
   private async validateCommanderCardAdd(
@@ -190,12 +204,13 @@ export class DecksService {
     return entries.reduce((sum, e) => sum + e.quantity, 0);
   }
 
-  async getDeck(deckId: string): Promise<DeckDetail> {
+  async getDeck(deckId: string, requestingUserId: string): Promise<DeckDetail> {
     const deck = await this.prisma.deck.findUnique({
       where: { id: deckId },
       include: { cards: { include: { card: true } }, commander: true },
     });
     if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
+    this.assertOwnership(deck.userId, requestingUserId);
 
     return {
       id: deck.id,
@@ -231,8 +246,8 @@ export class DecksService {
    * No bloquea nada al construir — es informativo, para saber si el
    * deck ya esta "completo" y listo para jugar.
    */
-  async validateDeck(deckId: string): Promise<DeckValidation> {
-    const deck = await this.getDeck(deckId);
+  async validateDeck(deckId: string, requestingUserId: string): Promise<DeckValidation> {
+    const deck = await this.getDeck(deckId, requestingUserId); // ya valida propiedad adentro
     const totalCards = deck.cards.reduce((sum, c) => sum + c.quantity, 0);
     const issues: string[] = [];
 
@@ -254,6 +269,44 @@ export class DecksService {
     }
 
     return { valid: issues.length === 0, issues };
+  }
+
+  /** Borra el deck completo (las filas de DeckCard se van en cascada por el schema). */
+  async deleteDeck(deckId: string, requestingUserId: string): Promise<void> {
+    const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
+    if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
+    this.assertOwnership(deck.userId, requestingUserId);
+
+    await this.prisma.deck.delete({ where: { id: deckId } });
+  }
+
+  /** Quita (o reduce) una carta del deck. Mismo patron que CollectionService.removeCard. */
+  async removeCardFromDeck(
+    deckId: string,
+    cardId: string,
+    quantity: number,
+    requestingUserId: string,
+  ): Promise<DeckSummary> {
+    const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
+    if (!deck) throw new NotFoundException(`Deck "${deckId}" no existe`);
+    this.assertOwnership(deck.userId, requestingUserId);
+
+    const existing = await this.prisma.deckCard.findUnique({
+      where: { deckId_cardId: { deckId, cardId } },
+    });
+    if (!existing) throw new NotFoundException(`Esa carta no esta en el deck`);
+
+    const newQty = existing.quantity - quantity;
+    if (newQty <= 0) {
+      await this.prisma.deckCard.delete({ where: { deckId_cardId: { deckId, cardId } } });
+    } else {
+      await this.prisma.deckCard.update({
+        where: { deckId_cardId: { deckId, cardId } },
+        data: { quantity: newQty },
+      });
+    }
+
+    return this.getSummary(deckId);
   }
 
   private async getSummary(deckId: string): Promise<DeckSummary> {

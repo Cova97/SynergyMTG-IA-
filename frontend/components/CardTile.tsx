@@ -17,7 +17,7 @@ export default function CardTile({
     <button
       type="button"
       onClick={onClick}
-      className={`group relative flex flex-col rounded-xl overflow-hidden border bg-surface text-left transition-all ${
+      className={`group relative flex w-full flex-col rounded-xl overflow-hidden border bg-surface text-left transition-all ${
         highlighted
           ? 'border-accent shadow-glow scale-[1.02]'
           : 'border-border hover:border-accent-dim hover:-translate-y-0.5'
